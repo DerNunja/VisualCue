@@ -1,0 +1,26 @@
+[
+  {
+    "sample_id": "ref",
+    "query": "mark the square",
+    "query_type": "referring",
+    "instances": [
+      {
+        "label": "square",
+        "polygon": [[4, 4, 18, 4, 18, 18, 4, 18]]
+      }
+    ]
+  },
+  {
+    "sample_id": "count",
+    "query": "how many squares are there?",
+    "query_type": "counting",
+    "gt_count": 1,
+    "instances": []
+  },
+  {
+    "sample_id": "open",
+    "query": "describe the image",
+    "query_type": "open_ended",
+    "instances": []
+  }
+]

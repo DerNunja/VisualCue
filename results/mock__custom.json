@@ -1,0 +1,47 @@
+{
+  "config_hash": "fc70245aae4cdce5d10587d0635b668b9538b2d56897a01567b04932b10f07b9",
+  "dataset_name": "custom",
+  "latency": {
+    "mean": 0.04049966567739224,
+    "p50": 0.034599997889017686,
+    "p95": 0.05658609989040997
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 1.0,
+        "mae": 2.0,
+        "n_samples": 1,
+        "rmse": 2.0
+      },
+      "open_ended": {
+        "n_samples": 1,
+        "skipped": true
+      },
+      "referring": {
+        "cumulative_iou": 0.2009132420091324,
+        "f1": 0.0,
+        "fn": 1,
+        "fp": 3,
+        "mean_iou": 0.2009132420091324,
+        "n_samples": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tp": 0
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.4",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": null
+      }
+    }
+  },
+  "n_samples": 3,
+  "system_name": "mock",
+  "timestamp": "2026-06-08T22:30:13.665245+00:00"
+}

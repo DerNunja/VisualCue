@@ -1,0 +1,10 @@
+systems:
+  - mock
+datasets:
+  - name: custom
+    root: tests/fixtures/custom_dataset
+iou_threshold: 0.5
+seed: 123
+attribution: false
+out_dir: results
+sample_limit: 3
