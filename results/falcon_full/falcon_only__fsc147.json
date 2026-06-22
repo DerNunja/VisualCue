@@ -1,0 +1,32 @@
+{
+  "config_hash": "47051d0f1db59a9f7d7d6f6f1f49f539562651823d61650f85abcd2d0819a6f3",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 2049.3408294269148,
+    "p50": 1049.255746500421,
+    "p95": 5615.282445549018
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 1.0,
+        "mae": 45.64705882352941,
+        "n_samples": 1190,
+        "rmse": 162.6299764609756
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 1190,
+  "system_name": "falcon_only",
+  "timestamp": "2026-06-22T20:51:30.822342+00:00"
+}

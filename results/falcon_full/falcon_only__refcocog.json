@@ -1,0 +1,37 @@
+{
+  "config_hash": "fb126eef5291c45f609240bdc70ed506c47fef59d5340dc6436fc11ace38ce17",
+  "dataset_name": "refcocog",
+  "latency": {
+    "mean": 328.61621345980984,
+    "p50": 322.0278464978037,
+    "p95": 364.11528600183374
+  },
+  "metrics": {
+    "end_to_end": {
+      "referring": {
+        "cumulative_iou": 0.663798756017276,
+        "f1": 0.7651369070574624,
+        "fn": 928,
+        "fp": 1508,
+        "mean_iou": 0.7002349185186065,
+        "n_samples": 4896,
+        "precision": 0.7246165084002922,
+        "recall": 0.8104575163398693,
+        "tp": 3968
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 4896,
+  "system_name": "falcon_only",
+  "timestamp": "2026-06-22T20:00:22.583299+00:00"
+}
