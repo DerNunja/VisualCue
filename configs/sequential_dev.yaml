@@ -1,0 +1,19 @@
+systems:
+  - name: sequential_pipeline
+    vlm_base_url: http://127.0.0.1:1234/v1
+    vlm_model: google/gemma-4-e4b
+    vlm_api_key: lm-studio
+datasets:
+  - name: refcocog
+    root: data/refcocog
+    split: val
+    split_by: umd
+  - name: fsc147
+    root: data/fsc147
+    split: test
+iou_threshold: 0.5
+seed: 123
+attribution: false
+out_dir: results/dev_sequential_logging
+sample_limit: 10
+sample_strategy: random
