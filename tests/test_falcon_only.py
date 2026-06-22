@@ -5,8 +5,26 @@ import os
 import numpy as np
 import pytest
 from PIL import Image
+from pycocotools import mask as mask_utils
 
 from visualcue.harness.types import SystemOutput
+
+
+def test_prediction_bbox_falls_back_to_mask_for_malformed_xy() -> None:
+    from visualcue.harness.systems.falcon_only import _prediction_to_instance
+
+    mask = np.zeros((5, 6), dtype=bool)
+    mask[1:3, 2:5] = True
+    rle = mask_utils.encode(np.asfortranarray(mask.astype(np.uint8)))
+    prediction = {
+        "xy": {"h": 0.1, "w": 0.2},
+        "hw": {"h": 0.4, "w": 0.5},
+        "mask_rle": {"size": rle["size"], "counts": rle["counts"].decode("ascii")},
+    }
+
+    instance = _prediction_to_instance(prediction, "object", (6, 5))
+
+    assert instance.bbox == (2.0, 1.0, 3.0, 2.0)
 
 
 def test_falcon_only_runs_with_local_weights(monkeypatch: pytest.MonkeyPatch) -> None:

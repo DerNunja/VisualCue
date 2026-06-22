@@ -70,7 +70,7 @@ def _prediction_to_instance(
 ) -> Instance:
     width, height = image_size
     mask = _decode_mask(prediction["mask_rle"])
-    bbox = _bbox_from_normalized_center(prediction, width, height)
+    bbox = _bbox_from_prediction(prediction, width, height, mask)
     return Instance(mask=mask, bbox=bbox, label=query, score=None)
 
 
@@ -89,3 +89,27 @@ def _bbox_from_normalized_center(
     x = prediction["xy"]["x"] * width - w_abs / 2
     y = prediction["xy"]["y"] * height - h_abs / 2
     return (x, y, w_abs, h_abs)
+
+
+def _bbox_from_prediction(
+    prediction: dict[str, Any],
+    width: int,
+    height: int,
+    mask: np.ndarray,
+) -> tuple[float, float, float, float] | None:
+    xy = prediction.get("xy")
+    hw = prediction.get("hw")
+    if isinstance(xy, dict) and isinstance(hw, dict) and {"x", "y"} <= xy.keys() and {"w", "h"} <= hw.keys():
+        return _bbox_from_normalized_center(prediction, width, height)
+    return _bbox_from_mask(mask)
+
+
+def _bbox_from_mask(mask: np.ndarray) -> tuple[float, float, float, float] | None:
+    ys, xs = np.where(mask)
+    if len(xs) == 0 or len(ys) == 0:
+        return None
+    x0 = float(xs.min())
+    y0 = float(ys.min())
+    x1 = float(xs.max() + 1)
+    y1 = float(ys.max() + 1)
+    return (x0, y0, x1 - x0, y1 - y0)
