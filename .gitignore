@@ -222,3 +222,6 @@ data/*
 !data/refcocog/
 data/refcocog/*
 !data/refcocog/.gitkeep
+
+# Local evaluation outputs
+results/*

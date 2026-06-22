@@ -2,3 +2,5 @@ torch>=2.5  # FlexAttention inference stack for Falcon Perception
 transformers
 requests
 gdown
+einops
+accelerate

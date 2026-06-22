@@ -22,6 +22,7 @@ class FalconOnly:
     def __init__(self, model_id: str = DEFAULT_MODEL_ID, device: str = DEFAULT_DEVICE) -> None:
         """Load the Falcon Perception model once for repeated harness calls."""
 
+        import torch
         from transformers import AutoModelForCausalLM
 
         self.model_id = model_id
@@ -30,6 +31,7 @@ class FalconOnly:
             model_id,
             trust_remote_code=True,
             device_map={"": device},
+            dtype=torch.bfloat16,
         )
         self._disable_sampling_defaults()
 
