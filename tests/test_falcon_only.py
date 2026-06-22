@@ -11,7 +11,7 @@ from visualcue.harness.types import SystemOutput
 
 
 def test_prediction_bbox_falls_back_to_mask_for_malformed_xy() -> None:
-    from visualcue.harness.systems.falcon_only import _prediction_to_instance
+    from visualcue.harness.systems._falcon import _prediction_to_instance
 
     mask = np.zeros((5, 6), dtype=bool)
     mask[1:3, 2:5] = True

@@ -9,6 +9,7 @@ dependencies = [
     "einops>=0.8.2",
     "gdown>=6.1.0",
     "numpy>=2.4.4",
+    "openai>=2.43.0",
     "pillow>=12.2.0",
     "pycocotools>=2.0.11",
     "pytest>=9.0.3",
