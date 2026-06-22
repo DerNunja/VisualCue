@@ -22,7 +22,10 @@ ANNOTATION_URLS = (
     "https://bvisionweb1.cs.unc.edu/licheng/referit/data/refcocog.zip",
     "https://web.archive.org/web/20220413012904/https://bvisionweb1.cs.unc.edu/licheng/referit/data/refcocog.zip",
 )
-COCO_TRAIN2014_URL = "https://images.cocodataset.org/train2014"
+COCO_TRAIN2014_URLS = (
+    "https://images.cocodataset.org/train2014",
+    "http://images.cocodataset.org/train2014",
+)
 REQUEST_TIMEOUT_SECONDS = 60
 CHUNK_SIZE_BYTES = 1024 * 1024
 MAX_RETRIES = 3
@@ -147,27 +150,41 @@ def _download_image(images_dir: Path, file_name: str) -> DownloadStatus:
     path = images_dir / file_name
     if path.exists():
         return "skipped"
-    url = f"{COCO_TRAIN2014_URL}/{file_name}"
-    _download_url(url, path)
+    _download_from_urls(_image_urls(file_name), path)
     return "downloaded"
 
 
 def _download_url(url: str, path: Path) -> None:
+    _download_from_urls((url,), path)
+
+
+def _download_from_urls(urls: tuple[str, ...], path: Path) -> None:
     part_path = path.with_name(f"{path.name}.part")
+    last_error: requests.RequestException | None = None
     for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-                response.raise_for_status()
-                with part_path.open("wb") as handle:
-                    for chunk in response.iter_content(chunk_size=CHUNK_SIZE_BYTES):
-                        if chunk:
-                            handle.write(chunk)
-            os.replace(part_path, path)
-            return
-        except requests.RequestException:
-            part_path.unlink(missing_ok=True)
-            if attempt == MAX_RETRIES:
-                raise
+        for url in urls:
+            try:
+                _download_url_once(url, part_path, path)
+                return
+            except requests.RequestException as exc:
+                last_error = exc
+                part_path.unlink(missing_ok=True)
+        if attempt == MAX_RETRIES and last_error is not None:
+            raise last_error
+
+
+def _download_url_once(url: str, part_path: Path, path: Path) -> None:
+    with requests.get(url, stream=True, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+        response.raise_for_status()
+        with part_path.open("wb") as handle:
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE_BYTES):
+                if chunk:
+                    handle.write(chunk)
+    os.replace(part_path, path)
+
+
+def _image_urls(file_name: str) -> tuple[str, ...]:
+    return tuple(f"{base_url}/{file_name}" for base_url in COCO_TRAIN2014_URLS)
 
 
 if __name__ == "__main__":
