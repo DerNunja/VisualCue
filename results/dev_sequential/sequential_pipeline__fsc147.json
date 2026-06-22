@@ -1,0 +1,32 @@
+{
+  "config_hash": "4d02d6f5fc710a2e593947a3d30881c554ff7610e46d9e14d7b4f02d5d7316e2",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 7956.446018200222,
+    "p50": 7408.128678496723,
+    "p95": 14622.192108150553
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 0.8,
+        "mae": 12.7,
+        "n_samples": 10,
+        "rmse": 31.885733486937383
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 10,
+  "system_name": "sequential_pipeline",
+  "timestamp": "2026-06-22T22:02:35.241255+00:00"
+}

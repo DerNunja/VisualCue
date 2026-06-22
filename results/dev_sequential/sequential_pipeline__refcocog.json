@@ -1,0 +1,37 @@
+{
+  "config_hash": "4d02d6f5fc710a2e593947a3d30881c554ff7610e46d9e14d7b4f02d5d7316e2",
+  "dataset_name": "refcocog",
+  "latency": {
+    "mean": 8137.659898999846,
+    "p50": 6138.633975002449,
+    "p95": 18223.236341047224
+  },
+  "metrics": {
+    "end_to_end": {
+      "referring": {
+        "cumulative_iou": 0.5461263921338169,
+        "f1": 0.7,
+        "fn": 3,
+        "fp": 3,
+        "mean_iou": 0.5909513010725871,
+        "n_samples": 10,
+        "precision": 0.7,
+        "recall": 0.7,
+        "tp": 7
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 10,
+  "system_name": "sequential_pipeline",
+  "timestamp": "2026-06-22T22:01:15.164061+00:00"
+}
