@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import random
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -43,18 +44,38 @@ DATASET_REGISTRY = {
 class LimitedDataset:
     """Cap dataset iteration for smoke runs; None leaves data uncapped."""
 
-    def __init__(self, dataset: DatasetAdapter, limit: int | None) -> None:
+    def __init__(
+        self,
+        dataset: DatasetAdapter,
+        limit: int | None,
+        strategy: str = "head",
+        seed: int | None = None,
+    ) -> None:
+        if strategy not in {"head", "random"}:
+            raise ValueError(f"unknown sample strategy: {strategy}")
         self.dataset = dataset
         self.limit = limit
+        self.strategy = strategy
         self.name = dataset.name
+        self._selected_indices = self._select_indices(seed)
 
     def __iter__(self) -> Iterator[GTSample]:
-        """Yield at most `limit` samples while preserving original order."""
+        """Yield capped samples while preserving original dataset order."""
 
+        if self.limit is None:
+            yield from self.dataset
+            return
+        if self.strategy == "head":
+            for index, sample in enumerate(self.dataset):
+                if index >= self.limit:
+                    break
+                yield sample
+            return
+
+        selected = self._selected_indices
         for index, sample in enumerate(self.dataset):
-            if self.limit is not None and index >= self.limit:
-                break
-            yield sample
+            if index in selected:
+                yield sample
 
     def __len__(self) -> int:
         """Return capped length when a limit is configured."""
@@ -62,6 +83,12 @@ class LimitedDataset:
         if self.limit is None:
             return len(self.dataset)
         return min(len(self.dataset), self.limit)
+
+    def _select_indices(self, seed: int | None) -> set[int]:
+        if self.limit is None or self.strategy == "head":
+            return set()
+        k = min(self.limit, len(self.dataset))
+        return set(sorted(random.Random(seed).sample(range(len(self.dataset)), k=k)))
 
 
 def main() -> None:
@@ -78,7 +105,9 @@ def main() -> None:
     sample_limit = config.get("sample_limit")
     if sample_limit is not None:
         sample_limit = int(sample_limit)
+    sample_strategy = str(config.get("sample_strategy", "head"))
     out_dir = Path(config.get("out_dir", "results"))
+    # Keep local random subsets in e.g. results/dev and full runs in results/falcon_full.
     iou_threshold = float(config.get("iou_threshold", 0.5))
     attribution = bool(config.get("attribution", False))
     seed = config.get("seed")
@@ -88,7 +117,7 @@ def main() -> None:
         for dataset in datasets:
             evaluate(
                 system=system,
-                dataset=LimitedDataset(dataset, sample_limit),
+                dataset=LimitedDataset(dataset, sample_limit, strategy=sample_strategy, seed=seed),
                 out_dir=out_dir,
                 iou_threshold=iou_threshold,
                 attribution=attribution,
