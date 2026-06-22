@@ -20,7 +20,14 @@ def test_refcocog_adapter_reads_local_refer_files(tmp_path) -> None:
             "ann_id": 20,
             "image_id": 1,
             "split": "val",
-            "sentences": [{"sent_id": 30, "sent": "white square"}],
+            "sentences": [{"sent_id": 30, "sent": "white square", "raw": "The white square."}],
+        },
+        {
+            "ref_id": 12,
+            "ann_id": 20,
+            "image_id": 1,
+            "split": "val",
+            "sentences": [{"sent_id": 32, "sent": "fallback square"}],
         },
         {
             "ref_id": 11,
@@ -53,13 +60,14 @@ def test_refcocog_adapter_reads_local_refer_files(tmp_path) -> None:
     dataset = RefCOCOgAdapter(tmp_path, split="val")
     samples = list(dataset)
 
-    assert len(dataset) == 1
-    assert len(samples) == 1
+    assert len(dataset) == 2
+    assert len(samples) == 2
     sample = samples[0]
     assert sample.sample_id == "10__30"
-    assert sample.query == "white square"
+    assert sample.query == "The white square."
     assert sample.query_type == "referring"
     assert sample.gt_instances[0].label == "square"
     assert isinstance(sample.gt_instances[0].mask, np.ndarray)
     assert sample.gt_instances[0].mask.dtype == np.bool_
     assert sample.gt_instances[0].mask.shape == (5, 6)
+    assert samples[1].query == "fallback square"

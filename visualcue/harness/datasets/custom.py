@@ -10,8 +10,8 @@ from typing import Any, Literal
 
 import numpy as np
 from PIL import Image
-from pycocotools import mask as mask_utils
 
+from visualcue.harness.datasets._masks import decode_segmentation
 from visualcue.harness.types import GTSample, Instance
 
 VALID_QUERY_TYPES = {"referring", "counting", "open_ended"}
@@ -137,27 +137,11 @@ def _decode_mask(entry: dict[str, Any], height: int, width: int) -> np.ndarray |
     segmentation = entry.get("segmentation")
     polygon = entry.get("polygon")
     if rle is not None:
-        return _decode_rle(rle, height, width)
+        return decode_segmentation(rle, height, width)
     if isinstance(segmentation, dict):
-        return _decode_rle(segmentation, height, width)
+        return decode_segmentation(segmentation, height, width)
     if polygon is not None:
-        return _decode_polygon(polygon, height, width)
+        return decode_segmentation(polygon, height, width)
     if isinstance(segmentation, list):
-        return _decode_polygon(segmentation, height, width)
+        return decode_segmentation(segmentation, height, width)
     return None
-
-
-def _decode_rle(rle: dict[str, Any], height: int, width: int) -> np.ndarray:
-    rle_with_size = dict(rle)
-    rle_with_size.setdefault("size", [height, width])
-    if isinstance(rle_with_size.get("counts"), str):
-        rle_with_size["counts"] = rle_with_size["counts"].encode("ascii")
-    if isinstance(rle_with_size.get("counts"), list):
-        rle_with_size = mask_utils.frPyObjects(rle_with_size, height, width)
-    return mask_utils.decode(rle_with_size).astype(bool)
-
-
-def _decode_polygon(polygon: list[Any], height: int, width: int) -> np.ndarray:
-    polygons = polygon if polygon and isinstance(polygon[0], list) else [polygon]
-    rles = mask_utils.frPyObjects(polygons, height, width)
-    return mask_utils.decode(mask_utils.merge(rles)).astype(bool)

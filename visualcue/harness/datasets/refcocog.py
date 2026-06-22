@@ -8,10 +8,9 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 from PIL import Image
-from pycocotools import mask as mask_utils
 
+from visualcue.harness.datasets._masks import decode_segmentation
 from visualcue.harness.types import GTSample, Instance
 
 DEFAULT_SPLIT = "val"
@@ -51,13 +50,14 @@ class RefCOCOgAdapter:
             image_info = self._images[ref["image_id"]]
             image = _open_rgb(self.root / "images" / image_info["file_name"])
             width, height = image.size
-            mask = _decode_segmentation(annotation["segmentation"], height, width)
+            mask = decode_segmentation(annotation["segmentation"], height, width)
             label = self._categories.get(annotation.get("category_id"))
             bbox = tuple(float(value) for value in annotation["bbox"]) if "bbox" in annotation else None
             sample_id = f"{ref['ref_id']}__{sentence['sent_id']}"
+            query = str(sentence.get("raw") or sentence.get("sent"))
             yield GTSample(
                 image=image,
-                query=str(sentence["sent"]),
+                query=query,
                 query_type="referring",
                 gt_instances=[Instance(mask=mask, bbox=bbox, label=label, score=None)],
                 gt_count=None,
@@ -104,18 +104,3 @@ def _open_rgb(path: Path) -> Image.Image:
         raise FileNotFoundError(f"missing RefCOCOg image: {path}")
     with Image.open(path) as image:
         return image.convert("RGB")
-
-
-def _decode_segmentation(segmentation: dict[str, Any] | list[Any], height: int, width: int) -> np.ndarray:
-    if isinstance(segmentation, dict):
-        rle = dict(segmentation)
-        rle.setdefault("size", [height, width])
-        if isinstance(rle.get("counts"), str):
-            rle["counts"] = rle["counts"].encode("ascii")
-        if isinstance(rle.get("counts"), list):
-            rle = mask_utils.frPyObjects(rle, height, width)
-        return mask_utils.decode(rle).astype(bool)
-
-    polygons = segmentation if segmentation and isinstance(segmentation[0], list) else [segmentation]
-    rles = mask_utils.frPyObjects(polygons, height, width)
-    return mask_utils.decode(mask_utils.merge(rles)).astype(bool)

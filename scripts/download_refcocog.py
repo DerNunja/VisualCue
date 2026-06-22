@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
+import tempfile
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -19,6 +21,7 @@ if str(ROOT) not in sys.path:
 from visualcue.harness.datasets.refcocog import required_image_files
 
 ANNOTATION_URLS = (
+    "https://huggingface.co/datasets/jxu124/refcocog/archive/main.zip",
     "https://bvisionweb1.cs.unc.edu/licheng/referit/data/refcocog.zip",
     "https://web.archive.org/web/20220413012904/https://bvisionweb1.cs.unc.edu/licheng/referit/data/refcocog.zip",
 )
@@ -77,14 +80,11 @@ def ensure_annotations(root: Path, split_by: str) -> None:
     if refs_path.exists() and instances_path.exists():
         return
 
-    archive_path = root / "refcocog.zip"
-    if not archive_path.exists():
-        _download_first_available(ANNOTATION_URLS, archive_path)
-    _extract_annotations(archive_path, root, split_by)
+    _download_first_available(ANNOTATION_URLS, root, split_by)
 
     missing = [str(path) for path in (refs_path, instances_path) if not path.exists()]
     if missing:
-        raise FileNotFoundError(f"annotation archive did not provide: {', '.join(missing)}")
+        raise FileNotFoundError(_missing_annotation_message(missing, root, split_by))
 
 
 def download_missing_images(images_dir: Path, file_names: list[str], workers: int) -> dict[DownloadStatus, int]:
@@ -109,16 +109,30 @@ def download_missing_images(images_dir: Path, file_names: list[str], workers: in
     return summary
 
 
-def _download_first_available(urls: tuple[str, ...], path: Path) -> None:
+def _download_first_available(urls: tuple[str, ...], root: Path, split_by: str) -> None:
     errors: list[str] = []
-    for url in urls:
+    for index, url in enumerate(urls, start=1):
+        archive_path = root / f"refcocog_source_{index}.part"
         try:
             print(f"downloading annotations: {url}")
-            _download_url(url, path)
-            return
-        except requests.RequestException as exc:
+            _download_url(url, archive_path)
+            with tempfile.TemporaryDirectory(dir=root) as temp_dir:
+                temp_root = Path(temp_dir)
+                _extract_annotations(archive_path, temp_root, split_by)
+                refs_path = temp_root / f"refs({split_by}).p"
+                instances_path = temp_root / "instances.json"
+                missing = [path.name for path in (refs_path, instances_path) if not path.exists()]
+                if missing:
+                    errors.append(f"{url}: missing {', '.join(missing)}")
+                    continue
+                shutil.copy2(refs_path, root / refs_path.name)
+                shutil.copy2(instances_path, root / instances_path.name)
+                return
+        except (requests.RequestException, zipfile.BadZipFile) as exc:
             errors.append(f"{url}: {exc}")
-    raise RuntimeError("could not download RefCOCOg annotations\n" + "\n".join(errors))
+        finally:
+            archive_path.unlink(missing_ok=True)
+    raise RuntimeError(_annotation_source_failure_message(root, split_by, errors))
 
 
 def _extract_annotations(archive_path: Path, root: Path, split_by: str) -> None:
@@ -136,6 +150,26 @@ def _extract_annotations(archive_path: Path, root: Path, split_by: str) -> None:
                 while chunk := source.read(CHUNK_SIZE_BYTES):
                     destination.write(chunk)
             os.replace(part_path, target_path)
+
+
+def _missing_annotation_message(missing: list[str], root: Path, split_by: str) -> str:
+    return (
+        f"missing RefCOCOg annotation files: {', '.join(missing)}. "
+        f"Expected {root / f'refs({split_by}).p'} and {root / 'instances.json'}. "
+        "Download the refer RefCOCOg archive from lichengunc/refer or its Wayback mirror; "
+        "if your archive only contains refs, also place the COCO train2014 instances file as instances.json."
+    )
+
+
+def _annotation_source_failure_message(root: Path, split_by: str, errors: list[str]) -> str:
+    missing = [str(root / f"refs({split_by}).p"), str(root / "instances.json")]
+    return (
+        "could not download a RefCOCOg annotation source with the required refer layout. "
+        f"Required files: {', '.join(missing)}. "
+        "Use the lichengunc/refer RefCOCOg archive or Wayback mirror; if using a refs-only mirror, "
+        "copy COCO annotations_trainval2014/annotations/instances_train2014.json to instances.json.\n"
+        + "\n".join(errors)
+    )
 
 
 def _find_archive_member(names: list[str], target_name: str) -> str | None:
