@@ -229,3 +229,5 @@ results/**
 !results/**/
 !results/*.json
 !results/**/*.json
+!results/*__samples.jsonl
+!results/**/*__samples.jsonl
