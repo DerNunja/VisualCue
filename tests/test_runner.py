@@ -31,6 +31,7 @@ def test_runner_end_to_end_with_custom_adapter(tmp_path) -> None:
 
     assert record.n_samples == 3
     result_path = tmp_path / "results" / "mock__custom.json"
+    samples_path = tmp_path / "results" / "mock__custom__samples.jsonl"
     assert result_path.exists()
     data = json.loads(result_path.read_text(encoding="utf-8"))
     assert data["n_samples"] == 3
@@ -38,3 +39,5 @@ def test_runner_end_to_end_with_custom_adapter(tmp_path) -> None:
     assert "mean_iou" in data["metrics"]["end_to_end"]["referring"]
     assert "mae" in data["metrics"]["end_to_end"]["counting"]
     assert data["metrics"]["end_to_end"]["open_ended"]["skipped"] is True
+    rows = [json.loads(line) for line in samples_path.read_text(encoding="utf-8").splitlines()]
+    assert all("intermediate" in row for row in rows)

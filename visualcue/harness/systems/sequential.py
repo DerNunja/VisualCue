@@ -58,13 +58,31 @@ class SequentialPipeline:
         falcon_device: str = DEFAULT_DEVICE,
         enable_reasoning: bool = True,
         free_falcon_between_calls: bool = False,
+        plan_system_prompt: str = PLAN_SYSTEM_PROMPT,
+        count_reason_system_prompt: str = COUNT_REASON_SYSTEM_PROMPT,
+        locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         vlm: VLMClient | None = None,
         segmenter: FalconSegmenter | None = None,
     ) -> None:
+        self.vlm_model = vlm_model
+        self.falcon_model_id = falcon_model_id
         self.vlm = vlm or VLMClient(base_url=vlm_base_url, model=vlm_model, api_key=vlm_api_key)
         self.segmenter = segmenter or FalconSegmenter(model_id=falcon_model_id, device=falcon_device)
         self.enable_reasoning = enable_reasoning
         self.free_falcon_between_calls = free_falcon_between_calls
+        self.plan_system_prompt = plan_system_prompt
+        self.count_reason_system_prompt = count_reason_system_prompt
+        self.locate_reason_system_prompt = locate_reason_system_prompt
+
+    def config(self) -> dict[str, Any]:
+        return {
+            "vlm_model": self.vlm_model,
+            "enable_reasoning": self.enable_reasoning,
+            "plan_system_prompt": self.plan_system_prompt,
+            "count_reason_system_prompt": self.count_reason_system_prompt,
+            "locate_reason_system_prompt": self.locate_reason_system_prompt,
+            "falcon_model_id": self.falcon_model_id,
+        }
 
     def run(
         self,
@@ -106,7 +124,7 @@ class SequentialPipeline:
         )
 
     def _plan(self, image: Image.Image, query: str, intermediate: dict[str, Any]) -> tuple[str, str]:
-        raw = self.vlm.complete(PLAN_SYSTEM_PROMPT, query, image=image)
+        raw = self.vlm.complete(self.plan_system_prompt, query, image=image)
         intermediate["plan_raw"] = raw
         try:
             parsed = _parse_json_object(raw)
@@ -149,7 +167,7 @@ class SequentialPipeline:
             f"Original request: {query}\n"
             f"The segmenter marked {len(instances)} region(s) matching '{segmentation_prompt}'."
         )
-        raw = self.vlm.complete(COUNT_REASON_SYSTEM_PROMPT, user_text, image=overlay)
+        raw = self.vlm.complete(self.count_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
         try:
             parsed = _parse_json_object(raw)
@@ -177,7 +195,7 @@ class SequentialPipeline:
             "Candidates:\n"
             + "\n".join(_candidate_text(index, instance) for index, instance in enumerate(instances))
         )
-        raw = self.vlm.complete(LOCATE_REASON_SYSTEM_PROMPT, user_text, image=overlay)
+        raw = self.vlm.complete(self.locate_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
         try:
             parsed = _parse_json_object(raw)

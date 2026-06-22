@@ -56,6 +56,7 @@ def test_sequential_count_intent_keeps_all_masks_and_vlm_count() -> None:
     assert output.count == 2
     assert len(output.instances) == 3
     assert segmenter.prompts == ["bottle"]
+    assert output.intermediate["segmentation_prompt"] == "bottle"
     assert vlm.plan_calls == 1
     assert vlm.reason_calls == 1
 
@@ -105,6 +106,32 @@ def test_sequential_gold_targets_skip_plan() -> None:
     assert vlm.reason_calls == 1
     assert segmenter.prompts == ["duck"]
     assert output.count == 1
+
+
+def test_sequential_config_includes_prompts_and_reasoning_flag() -> None:
+    pipeline = SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), enable_reasoning=False)
+    config = pipeline.config()
+
+    assert "plan_system_prompt" in config
+    assert "count_reason_system_prompt" in config
+    assert "locate_reason_system_prompt" in config
+    assert config["enable_reasoning"] is False
+
+
+def test_sequential_custom_plan_prompt_is_used_and_logged() -> None:
+    vlm = FakeVLM(['{"intent":"count","segmentation_prompt":"bottle"}'])
+    pipeline = SequentialPipeline(
+        vlm=vlm,
+        segmenter=FakeSegmenter(_instances(1)),
+        enable_reasoning=False,
+        plan_system_prompt="CUSTOM",
+    )
+
+    output = pipeline.run(_image(), "count bottles")
+
+    assert pipeline.config()["plan_system_prompt"] == "CUSTOM"
+    assert vlm.calls[0][0] == "CUSTOM"
+    assert output.intermediate["segmentation_prompt"] == "bottle"
 
 
 def _image() -> Image.Image:

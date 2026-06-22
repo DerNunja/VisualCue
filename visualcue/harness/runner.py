@@ -85,6 +85,9 @@ def evaluate(
         "end_to_end": _metrics_by_type(per_type, iou_threshold),
         "metadata": _metadata(seed),
     }
+    config_fn = getattr(system, "config", None)
+    if callable(config_fn):
+        metrics["metadata"]["system_config"] = config_fn()
     if attribution:
         metrics["gold_targets"] = _segmentation_metrics_by_type(gold_per_type, iou_threshold)
 
@@ -187,6 +190,7 @@ def _raw_row(sample: GTSample, out: SystemOutput) -> dict[str, Any]:
         "count": out.count,
         "answer": out.answer,
         "latency_ms": out.latency_ms,
+        "intermediate": out.intermediate,
     }
 
 

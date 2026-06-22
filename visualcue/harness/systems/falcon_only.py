@@ -25,6 +25,9 @@ class FalconOnly:
         self.device = device
         self.segmenter = segmenter or FalconSegmenter(model_id=model_id, device=device)
 
+    def config(self) -> dict[str, str]:
+        return {"model_id": self.model_id}
+
     def run(
         self,
         image: Image.Image,
