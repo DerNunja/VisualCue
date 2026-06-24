@@ -3,7 +3,13 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
-from visualcue.harness.systems.sequential import SequentialPipeline
+import pytest
+
+from visualcue.harness.systems.sequential import (
+    PLAN_SYSTEM_PROMPT_DETAILED,
+    PLAN_SYSTEM_PROMPT_SHORT,
+    SequentialPipeline,
+)
 from visualcue.harness.types import Instance
 
 
@@ -14,7 +20,7 @@ class FakeVLM:
 
     @property
     def plan_calls(self) -> int:
-        return sum("Produce a concise segmentation prompt" in system for system, _ in self.calls)
+        return sum('"segmentation_prompt"' in system for system, _ in self.calls)
 
     @property
     def reason_calls(self) -> int:
@@ -112,6 +118,7 @@ def test_sequential_config_includes_prompts_and_reasoning_flag() -> None:
     pipeline = SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), enable_reasoning=False)
     config = pipeline.config()
 
+    assert config["segmentation_prompt_style"] == "short"
     assert "plan_system_prompt" in config
     assert "count_reason_system_prompt" in config
     assert "locate_reason_system_prompt" in config
@@ -132,6 +139,43 @@ def test_sequential_custom_plan_prompt_is_used_and_logged() -> None:
     assert pipeline.config()["plan_system_prompt"] == "CUSTOM"
     assert vlm.calls[0][0] == "CUSTOM"
     assert output.intermediate["segmentation_prompt"] == "bottle"
+
+
+def test_sequential_prompt_style_selects_detailed_plan_prompt() -> None:
+    vlm = FakeVLM(['{"intent":"locate","segmentation_prompt":"small red cup on the left"}'])
+    pipeline = SequentialPipeline(
+        vlm=vlm,
+        segmenter=FakeSegmenter(_instances(1)),
+        enable_reasoning=False,
+        segmentation_prompt_style="detailed",
+    )
+
+    output = pipeline.run(_image(), "find the small red cup on the left")
+
+    assert pipeline.config()["segmentation_prompt_style"] == "detailed"
+    assert pipeline.config()["plan_system_prompt"] == PLAN_SYSTEM_PROMPT_DETAILED
+    assert vlm.calls[0][0] == PLAN_SYSTEM_PROMPT_DETAILED
+    assert output.intermediate["segmentation_prompt_style"] == "detailed"
+    assert output.intermediate["segmentation_prompt"] == "small red cup on the left"
+
+
+def test_sequential_prompt_style_defaults_to_short_plan_prompt() -> None:
+    pipeline = SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]))
+
+    assert pipeline.config()["segmentation_prompt_style"] == "short"
+    assert pipeline.config()["plan_system_prompt"] == PLAN_SYSTEM_PROMPT_SHORT
+
+
+def test_sequential_complex_prompt_style_aliases_detailed() -> None:
+    pipeline = SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), segmentation_prompt_style="complex")
+
+    assert pipeline.config()["segmentation_prompt_style"] == "detailed"
+    assert pipeline.config()["plan_system_prompt"] == PLAN_SYSTEM_PROMPT_DETAILED
+
+
+def test_sequential_invalid_prompt_style_fails_fast() -> None:
+    with pytest.raises(ValueError, match="segmentation_prompt_style"):
+        SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), segmentation_prompt_style="verbose")
 
 
 def _image() -> Image.Image:

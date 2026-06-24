@@ -25,6 +25,11 @@ def main() -> None:
     parser.add_argument("--vlm-model", default="gemma")
     parser.add_argument("--vlm-api-key", default="lm-studio")
     parser.add_argument("--falcon-device", default="cuda:0")
+    parser.add_argument(
+        "--segmentation-prompt-style",
+        choices=["short", "detailed", "complex"],
+        default="short",
+    )
     parser.add_argument("--disable-reasoning", action="store_true")
     args = parser.parse_args()
 
@@ -36,6 +41,7 @@ def main() -> None:
             vlm_api_key=args.vlm_api_key,
             falcon_device=args.falcon_device,
             enable_reasoning=not args.disable_reasoning,
+            segmentation_prompt_style=args.segmentation_prompt_style,
         )
         output = pipeline.run(image, args.query)
     except Exception as exc:

@@ -13,7 +13,20 @@ from visualcue.harness.systems._falcon import DEFAULT_DEVICE, DEFAULT_MODEL_ID, 
 from visualcue.harness.systems._vlm import VLMClient
 from visualcue.harness.types import Instance, SystemOutput
 
-PLAN_SYSTEM_PROMPT = (
+PLAN_SYSTEM_PROMPT_DETAILED = (
+    "You receive an image and a user request. Decide whether the user wants to COUNT objects or "
+    "to LOCATE a specific object. Produce a segmentation prompt for a promptable open-vocabulary "
+    "segmentation model. The segmentation model understands rich, compositional language, so "
+    "PRESERVE every distinguishing detail from the user's request that helps identify the correct "
+    "instance(s): attributes (color, size, shape, material, text/labels), ordinal position "
+    "(e.g. 'third from the left', 'the one closest to the camera'), spatial relations to other "
+    "objects, and grouping. Do NOT simplify to a bare object category if detail was given - only "
+    "drop wording that is not about identifying the object (e.g. politeness, the word 'please'). "
+    "Respond ONLY as JSON: "
+    '{"intent": "count"|"locate", "segmentation_prompt": "<full descriptive phrase>"}.'
+)
+
+PLAN_SYSTEM_PROMPT_SHORT = (
     "You receive an image and a user request. Decide whether the user wants to COUNT objects or "
     "to LOCATE a specific object. Produce a concise segmentation prompt naming the object class "
     "to segment. Respond ONLY as JSON: "
@@ -58,9 +71,10 @@ class SequentialPipeline:
         falcon_device: str = DEFAULT_DEVICE,
         enable_reasoning: bool = True,
         free_falcon_between_calls: bool = False,
-        plan_system_prompt: str = PLAN_SYSTEM_PROMPT,
+        plan_system_prompt: str | None = None,
         count_reason_system_prompt: str = COUNT_REASON_SYSTEM_PROMPT,
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
+        segmentation_prompt_style: str = "short",
         vlm: VLMClient | None = None,
         segmenter: FalconSegmenter | None = None,
     ) -> None:
@@ -70,7 +84,8 @@ class SequentialPipeline:
         self.segmenter = segmenter or FalconSegmenter(model_id=falcon_model_id, device=falcon_device)
         self.enable_reasoning = enable_reasoning
         self.free_falcon_between_calls = free_falcon_between_calls
-        self.plan_system_prompt = plan_system_prompt
+        self.segmentation_prompt_style = _normalize_segmentation_prompt_style(segmentation_prompt_style)
+        self.plan_system_prompt = plan_system_prompt or _plan_system_prompt_for_style(self.segmentation_prompt_style)
         self.count_reason_system_prompt = count_reason_system_prompt
         self.locate_reason_system_prompt = locate_reason_system_prompt
 
@@ -78,6 +93,7 @@ class SequentialPipeline:
         return {
             "vlm_model": self.vlm_model,
             "enable_reasoning": self.enable_reasoning,
+            "segmentation_prompt_style": self.segmentation_prompt_style,
             "plan_system_prompt": self.plan_system_prompt,
             "count_reason_system_prompt": self.count_reason_system_prompt,
             "locate_reason_system_prompt": self.locate_reason_system_prompt,
@@ -111,6 +127,7 @@ class SequentialPipeline:
             {
                 "intent": intent,
                 "segmentation_prompt": segmentation_prompt,
+                "segmentation_prompt_style": self.segmentation_prompt_style,
                 "n_candidates": len(instances),
             }
         )
@@ -241,6 +258,21 @@ def _parse_json_object(raw: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise TypeError("expected JSON object")
     return parsed
+
+
+def _normalize_segmentation_prompt_style(style: str) -> str:
+    normalized = style.lower().strip()
+    if normalized == "complex":
+        return "detailed"
+    if normalized not in {"short", "detailed"}:
+        raise ValueError("segmentation_prompt_style must be 'short', 'detailed', or 'complex'")
+    return normalized
+
+
+def _plan_system_prompt_for_style(style: str) -> str:
+    if style == "detailed":
+        return PLAN_SYSTEM_PROMPT_DETAILED
+    return PLAN_SYSTEM_PROMPT_SHORT
 
 
 def _strip_code_fence(text: str) -> str:
