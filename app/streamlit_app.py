@@ -78,7 +78,7 @@ def main() -> None:
         st.info("Is LM Studio running and the selected model loaded?")
         return
 
-    overlay = render_overlay(image, output.instances)
+    overlay = render_overlay(image, output.instances, fill_masks=False, draw_mask_outlines=True)
     _show_result(image, overlay, output.answer, output.count)
     _show_trace(settings["system"], output.intermediate)
 
