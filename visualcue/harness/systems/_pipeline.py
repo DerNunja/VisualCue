@@ -216,6 +216,12 @@ def render_overlay(image: Image.Image, instances: list[Instance]) -> Image.Image
     overlay = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8))
     draw = ImageDraw.Draw(overlay)
     for index, instance in enumerate(instances):
+        if instance.bbox is None:
+            continue
+        color = tuple(int(value) for value in OVERLAY_COLORS[index % len(OVERLAY_COLORS)])
+        x, y, width, height = instance.bbox
+        draw.rectangle((int(x), int(y), int(x + width), int(y + height)), outline=color, width=1)
+    for index, instance in enumerate(instances):
         anchor = _label_anchor(instance)
         if anchor is not None:
             draw.text(anchor, str(index), fill=(255, 255, 255))

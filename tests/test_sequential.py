@@ -9,6 +9,7 @@ from visualcue.harness.systems.sequential import (
     PLAN_SYSTEM_PROMPT_DETAILED,
     PLAN_SYSTEM_PROMPT_SHORT,
     SequentialPipeline,
+    render_overlay,
 )
 from visualcue.harness.types import Instance
 
@@ -176,6 +177,16 @@ def test_sequential_complex_prompt_style_aliases_detailed() -> None:
 def test_sequential_invalid_prompt_style_fails_fast() -> None:
     with pytest.raises(ValueError, match="segmentation_prompt_style"):
         SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), segmentation_prompt_style="verbose")
+
+
+def test_render_overlay_draws_thin_bounding_boxes() -> None:
+    image = Image.new("RGB", (12, 12), "white")
+    instance = Instance(mask=None, bbox=(2.0, 2.0, 5.0, 5.0), label="box", score=None)
+
+    overlay = render_overlay(image, [instance])
+
+    assert overlay.getpixel((7, 2)) == (255, 0, 0)
+    assert overlay.getpixel((6, 3)) == (255, 255, 255)
 
 
 def _image() -> Image.Image:
