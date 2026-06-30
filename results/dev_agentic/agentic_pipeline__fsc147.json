@@ -1,0 +1,46 @@
+{
+  "config_hash": "e3958e2ec3f2a1f876892e50f0cd67f3480e63d5092c3023c6feeb9b797f9a65",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 14963.476970499687,
+    "p50": 10206.249072499304,
+    "p95": 33402.703915249534
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 0.7,
+        "mae": 13.4,
+        "n_samples": 10,
+        "rmse": 32.22111109195336
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "system_config": {
+        "count_reason_system_prompt": "You receive an image with marked segmentation candidates. Answer the user's counting request. Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}.",
+        "enable_reasoning": true,
+        "evaluate_system_prompt": "You are refining an open-vocabulary segmentation. You see the original request, the current segmentation prompt, and an image with the current candidate masks drawn and numbered. If the current segmentation already lets you answer the request, choose finalize. Otherwise choose refine and give an improved segmentation_prompt that preserves or adjusts distinguishing detail (attributes, ordinal position, spatial relations). Respond ONLY as JSON: {\"action\": \"finalize\"|\"refine\", \"segmentation_prompt\": \"<required if refine>\", \"reason\": \"<short>\"}.",
+        "falcon_device": "cuda:0",
+        "falcon_model_id": "tiiuae/falcon-perception",
+        "free_falcon_between_calls": false,
+        "locate_reason_system_prompt": "You receive an image with numbered candidate masks and bounding boxes. Select the candidate indices that satisfy the user's request. Respond ONLY as JSON: {\"selected\": [<indices>], \"answer\": \"<text>\"}.",
+        "max_steps": 3,
+        "plan_system_prompt": "You receive an image and a user request. Decide whether the user wants to COUNT objects or to LOCATE a specific object. Produce a concise segmentation prompt naming the object class to segment. Respond ONLY as JSON: {\"intent\": \"count\"|\"locate\", \"segmentation_prompt\": \"<noun phrase>\"}.",
+        "segmentation_prompt_style": "short",
+        "vlm_base_url": "http://127.0.0.1:1234/v1",
+        "vlm_model": "google/gemma-4-e4b"
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 10,
+  "system_name": "agentic_pipeline",
+  "timestamp": "2026-06-30T11:46:51.134011+00:00"
+}
