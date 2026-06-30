@@ -37,7 +37,7 @@ COUNT_REASON_SYSTEM_PROMPT = (
     "Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}."
 )
 LOCATE_REASON_SYSTEM_PROMPT = (
-    "You receive an image with numbered colored candidate masks. Select the candidate "
+    "You receive an image with numbered candidate masks and bounding boxes. Select the candidate "
     "indices that satisfy the user's request. Respond ONLY as JSON: "
     '{"selected": [<indices>], "answer": "<text>"}.'
 )
@@ -182,7 +182,7 @@ class SequentialPipeline:
         overlay = render_overlay(image, instances)
         user_text = (
             f"Original request: {query}\n"
-            f"Segmentation prompt: {segmentation_prompt}"
+            f"The segmenter marked {len(instances)} region(s) matching '{segmentation_prompt}'."
         )
         raw = self.vlm.complete(self.count_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
@@ -208,7 +208,9 @@ class SequentialPipeline:
         overlay = render_overlay(image, instances)
         user_text = (
             f"Original request: {query}\n"
-            f"Segmentation prompt: {segmentation_prompt}"
+            f"Segmentation prompt: {segmentation_prompt}\n"
+            "Candidates:\n"
+            + "\n".join(_candidate_text(index, instance) for index, instance in enumerate(instances))
         )
         raw = self.vlm.complete(self.locate_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
@@ -282,6 +284,10 @@ def _strip_code_fence(text: str) -> str:
     if lines and lines[-1].startswith("```"):
         lines = lines[:-1]
     return "\n".join(lines).strip()
+
+
+def _candidate_text(index: int, instance: Instance) -> str:
+    return f"{index}: bbox={instance.bbox} label={instance.label}"
 
 
 def _label_anchor(instance: Instance) -> tuple[int, int] | None:

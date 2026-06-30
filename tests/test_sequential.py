@@ -65,8 +65,6 @@ def test_sequential_count_intent_keeps_all_masks_and_vlm_count() -> None:
     assert output.intermediate["segmentation_prompt"] == "bottle"
     assert vlm.plan_calls == 1
     assert vlm.reason_calls == 1
-    assert "marked 3" not in vlm.calls[1][1]
-    assert "Candidates:" not in vlm.calls[1][1]
 
 
 def test_sequential_locate_intent_selects_candidate() -> None:
@@ -81,8 +79,6 @@ def test_sequential_locate_intent_selects_candidate() -> None:
     assert output.instances == [candidates[1]]
     assert output.count == 1
     assert output.answer == "The second candidate."
-    assert "Candidates:" not in vlm.calls[1][1]
-    assert "bbox=" not in vlm.calls[1][1]
 
 
 def test_sequential_without_reasoning_skips_reason_call() -> None:
