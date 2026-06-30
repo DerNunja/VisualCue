@@ -5,3 +5,4 @@ gdown
 einops
 accelerate
 openai
+streamlit
