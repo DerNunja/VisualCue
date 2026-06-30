@@ -183,7 +183,7 @@ class AgenticPipeline(VlmSegPipeline):
         instances: list[Instance],
         intermediate: dict[str, Any],
     ) -> tuple[str, str, str]:
-        overlay = render_overlay(image, instances)
+        overlay = render_overlay(image, instances, fill_masks=False, draw_mask_outlines=True)
         parts = [
             f"Original request: {query}\n"
             f"Current segmentation prompt: {segmentation_prompt}\n"

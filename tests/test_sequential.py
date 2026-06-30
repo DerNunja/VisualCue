@@ -18,6 +18,7 @@ class FakeVLM:
     def __init__(self, responses: list[str]) -> None:
         self.responses = responses
         self.calls: list[tuple[str, str]] = []
+        self.images: list[Image.Image | None] = []
 
     @property
     def plan_calls(self) -> int:
@@ -28,8 +29,8 @@ class FakeVLM:
         return len(self.calls) - self.plan_calls
 
     def complete(self, system: str, user_text: str, image: Image.Image | None = None) -> str:
-        del image
         self.calls.append((system, user_text))
+        self.images.append(image)
         return self.responses.pop(0)
 
 
@@ -179,14 +180,45 @@ def test_sequential_invalid_prompt_style_fails_fast() -> None:
         SequentialPipeline(vlm=FakeVLM([]), segmenter=FakeSegmenter([]), segmentation_prompt_style="verbose")
 
 
-def test_render_overlay_draws_thin_bounding_boxes() -> None:
-    image = Image.new("RGB", (12, 12), "white")
-    instance = Instance(mask=None, bbox=(2.0, 2.0, 5.0, 5.0), label="box", score=None)
+def test_render_overlay_draws_bounding_boxes() -> None:
+    image = Image.new("RGB", (24, 24), "white")
+    instance = Instance(mask=None, bbox=(2.0, 2.0, 14.0, 14.0), label="box", score=None)
 
     overlay = render_overlay(image, [instance])
 
-    assert overlay.getpixel((7, 2)) == (255, 0, 0)
-    assert overlay.getpixel((6, 3)) == (255, 255, 255)
+    assert overlay.getpixel((16, 2)) == (255, 0, 0)
+    assert overlay.getpixel((16, 3)) == (255, 0, 0)
+    assert overlay.getpixel((10, 10)) == (255, 255, 255)
+
+
+def test_render_overlay_can_draw_mask_outlines_without_filling_masks() -> None:
+    image = Image.new("RGB", (24, 24), "blue")
+    mask = np.zeros((24, 24), dtype=bool)
+    mask[4:20, 4:20] = True
+    instance = Instance(mask=mask, bbox=None, label="mask", score=None)
+
+    overlay = render_overlay(image, [instance], fill_masks=False, draw_mask_outlines=True)
+
+    assert overlay.getpixel((4, 4)) == (255, 0, 0)
+    assert overlay.getpixel((12, 12)) == (0, 0, 255)
+
+
+def test_sequential_reasoning_overlay_preserves_object_colors() -> None:
+    image = Image.new("RGB", (24, 24), "blue")
+    mask = np.zeros((24, 24), dtype=bool)
+    mask[4:20, 4:20] = True
+    instance = Instance(mask=mask, bbox=None, label="blue lego", score=None)
+    vlm = FakeVLM([
+        '{"intent":"count","segmentation_prompt":"blue legos"}',
+        '{"count":1,"answer":"one blue lego"}',
+    ])
+
+    SequentialPipeline(vlm=vlm, segmenter=FakeSegmenter([instance])).run(image, "How many blue legos?")
+
+    reason_image = vlm.images[1]
+    assert reason_image is not None
+    assert reason_image.getpixel((12, 4)) == (255, 0, 0)
+    assert reason_image.getpixel((12, 12)) == (0, 0, 255)
 
 
 def _image() -> Image.Image:

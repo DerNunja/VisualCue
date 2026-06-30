@@ -155,7 +155,7 @@ class VlmSegPipeline:
         instances: list[Instance],
         intermediate: dict[str, Any],
     ) -> tuple[list[Instance], int, str]:
-        overlay = render_overlay(image, instances)
+        overlay = render_overlay(image, instances, fill_masks=False, draw_mask_outlines=True)
         user_text = (
             f"Original request: {query}\n"
             f"The segmenter marked {len(instances)} region(s) matching '{segmentation_prompt}'."
@@ -181,7 +181,7 @@ class VlmSegPipeline:
         instances: list[Instance],
         intermediate: dict[str, Any],
     ) -> tuple[list[Instance], int, str]:
-        overlay = render_overlay(image, instances)
+        overlay = render_overlay(image, instances, fill_masks=False, draw_mask_outlines=True)
         user_text = (
             f"Original request: {query}\n"
             f"Segmentation prompt: {segmentation_prompt}\n"
@@ -203,7 +203,15 @@ class VlmSegPipeline:
             return instances, count, str(count)
 
 
-def render_overlay(image: Image.Image, instances: list[Instance]) -> Image.Image:
+def render_overlay(
+    image: Image.Image,
+    instances: list[Instance],
+    *,
+    fill_masks: bool = True,
+    draw_mask_outlines: bool = False,
+    draw_boxes: bool = True,
+    line_width: int = 2,
+) -> Image.Image:
     """Render numbered mask candidates without pixel-wise Python loops."""
 
     base = np.asarray(image.convert("RGB")).astype(np.float32)
@@ -212,20 +220,53 @@ def render_overlay(image: Image.Image, instances: list[Instance]) -> Image.Image
             continue
         mask = instance.mask.astype(bool, copy=False)
         color = OVERLAY_COLORS[index % len(OVERLAY_COLORS)]
-        base[mask] = (1.0 - OVERLAY_ALPHA) * base[mask] + OVERLAY_ALPHA * color
+        if fill_masks:
+            base[mask] = (1.0 - OVERLAY_ALPHA) * base[mask] + OVERLAY_ALPHA * color
+        if draw_mask_outlines:
+            base[_mask_boundary(mask, line_width)] = color
     overlay = Image.fromarray(np.clip(base, 0, 255).astype(np.uint8))
     draw = ImageDraw.Draw(overlay)
-    for index, instance in enumerate(instances):
-        if instance.bbox is None:
-            continue
-        color = tuple(int(value) for value in OVERLAY_COLORS[index % len(OVERLAY_COLORS)])
-        x, y, width, height = instance.bbox
-        draw.rectangle((int(x), int(y), int(x + width), int(y + height)), outline=color, width=1)
+    if draw_boxes:
+        for index, instance in enumerate(instances):
+            if instance.bbox is None:
+                continue
+            color = tuple(int(value) for value in OVERLAY_COLORS[index % len(OVERLAY_COLORS)])
+            x, y, width, height = instance.bbox
+            draw.rectangle((int(x), int(y), int(x + width), int(y + height)), outline=color, width=line_width)
     for index, instance in enumerate(instances):
         anchor = _label_anchor(instance)
         if anchor is not None:
             draw.text(anchor, str(index), fill=(255, 255, 255))
     return overlay
+
+
+def _mask_boundary(mask: np.ndarray, width: int) -> np.ndarray:
+    boundary = mask & ~_erode_mask(mask)
+    for _ in range(max(1, width) - 1):
+        boundary = _dilate_mask(boundary)
+    return boundary
+
+
+def _erode_mask(mask: np.ndarray) -> np.ndarray:
+    padded = np.pad(mask, 1, constant_values=False)
+    return (
+        padded[1:-1, 1:-1]
+        & padded[:-2, 1:-1]
+        & padded[2:, 1:-1]
+        & padded[1:-1, :-2]
+        & padded[1:-1, 2:]
+    )
+
+
+def _dilate_mask(mask: np.ndarray) -> np.ndarray:
+    padded = np.pad(mask, 1, constant_values=False)
+    return (
+        padded[1:-1, 1:-1]
+        | padded[:-2, 1:-1]
+        | padded[2:, 1:-1]
+        | padded[1:-1, :-2]
+        | padded[1:-1, 2:]
+    )
 
 
 def _parse_json_object(raw: str) -> dict[str, Any]:
