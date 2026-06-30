@@ -49,6 +49,7 @@ class AgenticPipeline(VlmSegPipeline):
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         segmentation_prompt_style: str = "short",
         max_steps: int = 8,
+        include_prompt_history: bool = False,
         evaluate_system_prompt: str = EVALUATE_SYSTEM_PROMPT,
         vlm: VLMClient | None = None,
         segmenter: FalconSegmenter | None = None,
@@ -71,6 +72,7 @@ class AgenticPipeline(VlmSegPipeline):
         self.max_steps = int(max_steps)
         if self.max_steps < 1:
             raise ValueError("max_steps must be >= 1")
+        self.include_prompt_history = include_prompt_history
         self.evaluate_system_prompt = evaluate_system_prompt
 
     def config(self) -> dict[str, Any]:
@@ -78,6 +80,7 @@ class AgenticPipeline(VlmSegPipeline):
         config.update(
             {
                 "max_steps": self.max_steps,
+                "include_prompt_history": self.include_prompt_history,
                 "evaluate_system_prompt": self.evaluate_system_prompt,
             }
         )
@@ -114,6 +117,7 @@ class AgenticPipeline(VlmSegPipeline):
                 "intent": intent,
                 "segmentation_prompt": segmentation_prompt,
                 "segmentation_prompt_style": self.segmentation_prompt_style,
+                "include_prompt_history": self.include_prompt_history,
                 "n_candidates": len(instances),
                 "n_steps": len(intermediate["steps"]),
                 "stop_reason": stop_reason,
@@ -180,13 +184,18 @@ class AgenticPipeline(VlmSegPipeline):
         intermediate: dict[str, Any],
     ) -> tuple[str, str, str]:
         overlay = render_overlay(image, instances)
-        user_text = (
+        parts = [
             f"Original request: {query}\n"
             f"Current segmentation prompt: {segmentation_prompt}\n"
-            f"The segmenter returned {len(instances)} candidate(s).\n"
+            f"The segmenter returned {len(instances)} candidate(s)."
+        ]
+        if self.include_prompt_history:
+            parts.append(_prompt_history_text(intermediate))
+        parts.append(
             "Candidates:\n"
             + "\n".join(_candidate_text(index, instance) for index, instance in enumerate(instances))
         )
+        user_text = "\n".join(parts)
         raw = self.vlm.complete(self.evaluate_system_prompt, user_text, image=overlay)
         try:
             parsed = _parse_json_object(raw)
@@ -219,3 +228,20 @@ def _step_record(
         "action": action,
         "evaluate_raw": evaluate_raw,
     }
+
+
+def _prompt_history_text(intermediate: dict[str, Any]) -> str:
+    steps = intermediate.get("steps", [])
+    if not isinstance(steps, list):
+        return "Previous segmentation prompts: none"
+
+    previous_prompts = [
+        str(step.get("segmentation_prompt"))
+        for step in steps[:-1]
+        if isinstance(step, dict) and step.get("segmentation_prompt")
+    ]
+    if not previous_prompts:
+        return "Previous segmentation prompts: none"
+    lines = ["Previous segmentation prompts:"]
+    lines.extend(f"{index}: {prompt}" for index, prompt in enumerate(previous_prompts))
+    return "\n".join(lines)

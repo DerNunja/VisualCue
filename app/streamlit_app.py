@@ -16,7 +16,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from visualcue.harness.systems._falcon import DEFAULT_DEVICE, DEFAULT_MODEL_ID, FalconSegmenter
-from visualcue.harness.systems._pipeline import PLAN_SYSTEM_PROMPT_DETAILED, PLAN_SYSTEM_PROMPT_SHORT, render_overlay
+from visualcue.harness.systems._pipeline import (
+    PLAN_SYSTEM_PROMPT_DETAILED,
+    PLAN_SYSTEM_PROMPT_SHORT,
+    render_overlay,
+)
 from visualcue.harness.systems._vlm import VLMClient
 from visualcue.harness.systems.agentic import AgenticPipeline
 from visualcue.harness.systems.sequential import SequentialPipeline
@@ -90,8 +94,10 @@ def _sidebar_settings() -> dict[str, Any]:
     enable_reasoning = st.sidebar.toggle("Enable reasoning", value=True)
 
     max_steps = 8
+    include_prompt_history = False
     if system == "agentic_pipeline":
         max_steps = st.sidebar.slider("Max refine steps", min_value=1, max_value=12, value=8)
+        include_prompt_history = st.sidebar.toggle("Show previous prompts to loop", value=False)
         st.sidebar.caption("Agentic is slower because it uses additional VLM calls per refine step.")
 
     with st.sidebar.expander("Connection settings"):
@@ -105,6 +111,7 @@ def _sidebar_settings() -> dict[str, Any]:
         "prompt_style": prompt_style,
         "enable_reasoning": enable_reasoning,
         "max_steps": max_steps,
+        "include_prompt_history": include_prompt_history,
         "vlm_base_url": vlm_base_url,
         "vlm_model": vlm_model,
         "vlm_api_key": vlm_api_key,
@@ -134,7 +141,11 @@ def _make_pipeline(settings: dict[str, Any], segmenter: FalconSegmenter) -> Sequ
         "segmenter": segmenter,
     }
     if settings["system"] == "agentic_pipeline":
-        return AgenticPipeline(max_steps=int(settings["max_steps"]), **common_kwargs)
+        return AgenticPipeline(
+            max_steps=int(settings["max_steps"]),
+            include_prompt_history=bool(settings["include_prompt_history"]),
+            **common_kwargs,
+        )
     return SequentialPipeline(**common_kwargs)
 
 

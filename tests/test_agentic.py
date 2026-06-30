@@ -90,6 +90,8 @@ def test_agentic_refines_then_finalizes_and_reasons_on_latest_segment() -> None:
         },
     ]
     assert vlm.stages == ["plan", "evaluate", "evaluate", "reason"]
+    assert "Previous segmentation prompts" not in vlm.calls[1][1]
+    assert "Previous segmentation prompts" not in vlm.calls[2][1]
     assert "Candidates:" in vlm.calls[-1][1]
     assert "bbox=(0.0, 0.0, 2.0, 2.0)" in vlm.calls[-1][1]
 
@@ -163,12 +165,32 @@ def test_agentic_config_includes_max_steps_and_evaluate_prompt() -> None:
         vlm=FakeVLM([]),
         segmenter=FakeSegmenter([]),
         max_steps=4,
+        include_prompt_history=True,
         evaluate_system_prompt="EVAL",
     )
     config = pipeline.config()
     assert config["max_steps"] == 4
+    assert config["include_prompt_history"] is True
     assert config["evaluate_system_prompt"] == "EVAL"
     assert EVALUATE_SYSTEM_PROMPT.startswith("You are refining")
+
+
+def test_agentic_can_include_previous_prompts_in_evaluate_calls() -> None:
+    vlm = FakeVLM([
+        '{"intent":"locate","segmentation_prompt":"cow"}',
+        '{"action":"refine","segmentation_prompt":"front cow","reason":"too broad"}',
+        '{"action":"finalize","reason":"specific enough"}',
+        '{"selected":[0],"answer":"front cow"}',
+    ])
+    segmenter = FakeSegmenter([_instances(2), _instances(1)])
+
+    output = AgenticPipeline(vlm=vlm, segmenter=segmenter, include_prompt_history=True).run(_image(), "find cow")
+
+    assert output.intermediate["include_prompt_history"] is True
+    assert "Previous segmentation prompts: none" in vlm.calls[1][1]
+    assert "Current segmentation prompt: front cow" in vlm.calls[2][1]
+    assert "Previous segmentation prompts:\n0: cow" in vlm.calls[2][1]
+    assert "1: front cow" not in vlm.calls[2][1]
 
 
 def test_agentic_rejects_non_positive_max_steps() -> None:
