@@ -6,3 +6,4 @@ einops
 accelerate
 openai
 streamlit
+tqdm

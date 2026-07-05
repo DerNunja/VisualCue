@@ -18,6 +18,7 @@ dependencies = [
     "scipy>=1.17.1",
     "streamlit>=1.56.0",
     "torch>=2.12.1",
+    "tqdm>=4.68.3",
     "transformers>=5.12.1",
 ]
 

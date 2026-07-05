@@ -16,6 +16,7 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw
 from pycocotools import mask as mask_utils
+from tqdm.auto import tqdm
 
 from visualcue.harness.datasets.base import DatasetAdapter
 from visualcue.harness.metrics import (
@@ -58,24 +59,26 @@ def evaluate(
     raw_rows: list[dict[str, Any]] = []
     latencies: list[float] = []
 
-    for index, sample in enumerate(dataset):
-        setattr(sample.image, "sample_id", sample.sample_id)
-        start = time.perf_counter()
-        out = system.run(sample.image, sample.query)
-        out.latency_ms = (time.perf_counter() - start) * 1000.0
-        latencies.append(out.latency_ms)
-        per_type[sample.query_type].append((out, sample))
-        raw_rows.append(_raw_row(sample, out))
-        if index < QUALITATIVE_LIMIT:
-            _write_overlay(sample, out, qualitative_dir / f"{stem}__{sample.sample_id}.png")
-
-        if attribution:
-            gold_targets = [instance.label for instance in sample.gt_instances if instance.label]
+    progress_desc = f"{system.name} / {dataset.name}"
+    with tqdm(dataset, total=_safe_len(dataset), desc=progress_desc, unit="sample") as progress:
+        for index, sample in enumerate(progress):
             setattr(sample.image, "sample_id", sample.sample_id)
-            gold_start = time.perf_counter()
-            gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
-            gold_out.latency_ms = (time.perf_counter() - gold_start) * 1000.0
-            gold_per_type[sample.query_type].append((gold_out, sample))
+            start = time.perf_counter()
+            out = system.run(sample.image, sample.query)
+            out.latency_ms = (time.perf_counter() - start) * 1000.0
+            latencies.append(out.latency_ms)
+            per_type[sample.query_type].append((out, sample))
+            raw_rows.append(_raw_row(sample, out))
+            if index < QUALITATIVE_LIMIT:
+                _write_overlay(sample, out, qualitative_dir / f"{stem}__{sample.sample_id}.png")
+
+            if attribution:
+                gold_targets = [instance.label for instance in sample.gt_instances if instance.label]
+                setattr(sample.image, "sample_id", sample.sample_id)
+                gold_start = time.perf_counter()
+                gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
+                gold_out.latency_ms = (time.perf_counter() - gold_start) * 1000.0
+                gold_per_type[sample.query_type].append((gold_out, sample))
 
     with samples_path.open("w", encoding="utf-8") as handle:
         for row in raw_rows:
@@ -115,6 +118,13 @@ def _set_seed(seed: int | None) -> None:
     except ImportError:
         return
     torch.manual_seed(seed)
+
+
+def _safe_len(dataset: DatasetAdapter) -> int | None:
+    try:
+        return len(dataset)
+    except TypeError:
+        return None
 
 
 def _unique_stem(out_dir: Path, system_name: str, dataset_name: str) -> str:

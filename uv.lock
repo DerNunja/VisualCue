@@ -2295,6 +2295,7 @@ dependencies = [
     { name = "scipy" },
     { name = "streamlit" },
     { name = "torch" },
+    { name = "tqdm" },
     { name = "transformers" },
 ]
 
@@ -2313,6 +2314,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "streamlit", specifier = ">=1.56.0" },
     { name = "torch", specifier = ">=2.12.1" },
+    { name = "tqdm", specifier = ">=4.68.3" },
     { name = "transformers", specifier = ">=5.12.1" },
 ]
 
