@@ -14,9 +14,10 @@ from visualcue.harness.systems._pipeline import (
     VlmSegPipeline,
     _candidate_text,
     _parse_json_object,
+    _record_vlm_usage,
     render_overlay,
 )
-from visualcue.harness.systems._vlm import VLMClient
+from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient
 from visualcue.harness.types import Instance, SystemOutput
 
 EVALUATE_SYSTEM_PROMPT = (
@@ -48,6 +49,7 @@ class AgenticPipeline(VlmSegPipeline):
         count_reason_system_prompt: str = COUNT_REASON_SYSTEM_PROMPT,
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         segmentation_prompt_style: str = "short",
+        vlm_max_tokens: int = DEFAULT_MAX_TOKENS,
         max_steps: int = 8,
         include_prompt_history: bool = False,
         evaluate_system_prompt: str = EVALUATE_SYSTEM_PROMPT,
@@ -66,6 +68,7 @@ class AgenticPipeline(VlmSegPipeline):
             count_reason_system_prompt=count_reason_system_prompt,
             locate_reason_system_prompt=locate_reason_system_prompt,
             segmentation_prompt_style=segmentation_prompt_style,
+            vlm_max_tokens=vlm_max_tokens,
             vlm=vlm,
             segmenter=segmenter,
         )
@@ -197,6 +200,7 @@ class AgenticPipeline(VlmSegPipeline):
         )
         user_text = "\n".join(parts)
         raw = self.vlm.complete(self.evaluate_system_prompt, user_text, image=overlay)
+        _record_vlm_usage(intermediate, "evaluate", self.vlm)
         try:
             parsed = _parse_json_object(raw)
             action = str(parsed.get("action", "finalize")).lower()

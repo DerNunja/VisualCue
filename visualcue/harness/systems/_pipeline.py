@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from visualcue.harness.systems._falcon import DEFAULT_DEVICE, DEFAULT_MODEL_ID, FalconSegmenter
-from visualcue.harness.systems._vlm import VLMClient
+from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient
 from visualcue.harness.types import Instance
 
 PLAN_SYSTEM_PROMPT_DETAILED = (
@@ -73,14 +73,21 @@ class VlmSegPipeline:
         count_reason_system_prompt: str = COUNT_REASON_SYSTEM_PROMPT,
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         segmentation_prompt_style: str = "short",
+        vlm_max_tokens: int = DEFAULT_MAX_TOKENS,
         vlm: VLMClient | None = None,
         segmenter: FalconSegmenter | None = None,
     ) -> None:
         self.vlm_base_url = vlm_base_url
         self.vlm_model = vlm_model
+        self.vlm_max_tokens = int(vlm_max_tokens)
         self.falcon_model_id = falcon_model_id
         self.falcon_device = falcon_device
-        self.vlm = vlm or VLMClient(base_url=vlm_base_url, model=vlm_model, api_key=vlm_api_key)
+        self.vlm = vlm or VLMClient(
+            base_url=vlm_base_url,
+            model=vlm_model,
+            api_key=vlm_api_key,
+            max_tokens=self.vlm_max_tokens,
+        )
         self.segmenter = segmenter or FalconSegmenter(model_id=falcon_model_id, device=falcon_device)
         self.enable_reasoning = enable_reasoning
         self.free_falcon_between_calls = free_falcon_between_calls
@@ -95,6 +102,7 @@ class VlmSegPipeline:
         return {
             "vlm_base_url": self.vlm_base_url,
             "vlm_model": self.vlm_model,
+            "vlm_max_tokens": self.vlm_max_tokens,
             "enable_reasoning": self.enable_reasoning,
             "free_falcon_between_calls": self.free_falcon_between_calls,
             "segmentation_prompt_style": self.segmentation_prompt_style,
@@ -119,6 +127,7 @@ class VlmSegPipeline:
     def _plan(self, image: Image.Image, query: str, intermediate: dict[str, Any]) -> tuple[str, str]:
         raw = self.vlm.complete(self.plan_system_prompt, query, image=image)
         intermediate["plan_raw"] = raw
+        _record_vlm_usage(intermediate, "plan", self.vlm)
         try:
             parsed = _parse_json_object(raw)
             intent = str(parsed.get("intent", "locate")).lower()
@@ -162,6 +171,7 @@ class VlmSegPipeline:
         )
         raw = self.vlm.complete(self.count_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
+        _record_vlm_usage(intermediate, "reason", self.vlm)
         try:
             parsed = _parse_json_object(raw)
             count = int(parsed["count"])
@@ -190,6 +200,7 @@ class VlmSegPipeline:
         )
         raw = self.vlm.complete(self.locate_reason_system_prompt, user_text, image=overlay)
         intermediate["reason_raw"] = raw
+        _record_vlm_usage(intermediate, "reason", self.vlm)
         try:
             parsed = _parse_json_object(raw)
             selected = [int(index) for index in parsed["selected"]]
@@ -281,6 +292,20 @@ def _parse_json_object(raw: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise TypeError("expected JSON object")
     return parsed
+
+
+def _record_vlm_usage(intermediate: dict[str, Any], stage: str, vlm: Any) -> None:
+    usage = getattr(vlm, "last_usage", None)
+    if not usage:
+        return
+    row = {"stage": stage, **usage}
+    intermediate.setdefault("vlm_usage", []).append(row)
+    totals = intermediate.setdefault(
+        "vlm_usage_total",
+        {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    )
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        totals[key] += int(usage.get(key, 0))
 
 
 def _normalize_segmentation_prompt_style(style: str) -> str:

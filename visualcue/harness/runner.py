@@ -29,6 +29,7 @@ from visualcue.harness.metrics import (
     precision_recall_f1,
 )
 from visualcue.harness.systems.base import VisionSystem
+from visualcue.harness.systems._vlm import VLMTokenLimitExceeded
 from visualcue.harness.types import GTSample, Instance, ResultRecord, SystemOutput
 DEFAULT_IOU_THRESHOLD = 0.5
 QUALITATIVE_LIMIT = 8
@@ -58,13 +59,20 @@ def evaluate(
     gold_per_type: dict[str, list[tuple[SystemOutput, GTSample]]] = defaultdict(list)
     raw_rows: list[dict[str, Any]] = []
     latencies: list[float] = []
+    skipped_samples = 0
 
     progress_desc = f"{system.name} / {dataset.name}"
     with tqdm(dataset, total=_safe_len(dataset), desc=progress_desc, unit="sample") as progress:
         for index, sample in enumerate(progress):
             setattr(sample.image, "sample_id", sample.sample_id)
             start = time.perf_counter()
-            out = system.run(sample.image, sample.query)
+            try:
+                out = system.run(sample.image, sample.query)
+            except VLMTokenLimitExceeded as exc:
+                skipped_samples += 1
+                raw_rows.append(_skip_row(sample, exc, (time.perf_counter() - start) * 1000.0))
+                progress.write(f"skipped {sample.sample_id}: {exc}")
+                continue
             out.latency_ms = (time.perf_counter() - start) * 1000.0
             latencies.append(out.latency_ms)
             per_type[sample.query_type].append((out, sample))
@@ -76,7 +84,11 @@ def evaluate(
                 gold_targets = [instance.label for instance in sample.gt_instances if instance.label]
                 setattr(sample.image, "sample_id", sample.sample_id)
                 gold_start = time.perf_counter()
-                gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
+                try:
+                    gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
+                except VLMTokenLimitExceeded as exc:
+                    progress.write(f"skipped gold-target attribution for {sample.sample_id}: {exc}")
+                    continue
                 gold_out.latency_ms = (time.perf_counter() - gold_start) * 1000.0
                 gold_per_type[sample.query_type].append((gold_out, sample))
 
@@ -91,13 +103,14 @@ def evaluate(
     config_fn = getattr(system, "config", None)
     if callable(config_fn):
         metrics["metadata"]["system_config"] = config_fn()
+    metrics["metadata"]["skipped_samples"] = skipped_samples
     if attribution:
         metrics["gold_targets"] = _segmentation_metrics_by_type(gold_per_type, iou_threshold)
 
     record = ResultRecord(
         system_name=system.name,
         dataset_name=dataset.name,
-        n_samples=len(raw_rows),
+        n_samples=len(raw_rows) - skipped_samples,
         metrics=metrics,
         latency=latency_stats(latencies),
         config_hash=hashlib.sha256(config_bytes or b"").hexdigest(),
@@ -201,6 +214,25 @@ def _raw_row(sample: GTSample, out: SystemOutput) -> dict[str, Any]:
         "answer": out.answer,
         "latency_ms": out.latency_ms,
         "intermediate": out.intermediate,
+    }
+
+
+def _skip_row(sample: GTSample, exc: VLMTokenLimitExceeded, latency_ms: float) -> dict[str, Any]:
+    return {
+        "sample_id": sample.sample_id,
+        "query_type": sample.query_type,
+        "skipped": True,
+        "skip_reason": "vlm_token_limit_exceeded",
+        "error": str(exc),
+        "latency_ms": latency_ms,
+        "vlm_usage": exc.usage,
+        "predictions": [],
+        "count": None,
+        "answer": None,
+        "intermediate": {
+            "skip_reason": "vlm_token_limit_exceeded",
+            "vlm_usage": [{"stage": "unknown", **exc.usage}] if exc.usage else [],
+        },
     }
 
 

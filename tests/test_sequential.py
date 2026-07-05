@@ -15,10 +15,12 @@ from visualcue.harness.types import Instance
 
 
 class FakeVLM:
-    def __init__(self, responses: list[str]) -> None:
+    def __init__(self, responses: list[str], usages: list[dict[str, int]] | None = None) -> None:
         self.responses = responses
+        self.usages = usages or []
         self.calls: list[tuple[str, str]] = []
         self.images: list[Image.Image | None] = []
+        self.last_usage: dict[str, int] | None = None
 
     @property
     def plan_calls(self) -> int:
@@ -31,6 +33,7 @@ class FakeVLM:
     def complete(self, system: str, user_text: str, image: Image.Image | None = None) -> str:
         self.calls.append((system, user_text))
         self.images.append(image)
+        self.last_usage = self.usages.pop(0) if self.usages else None
         return self.responses.pop(0)
 
 
@@ -141,6 +144,31 @@ def test_sequential_custom_plan_prompt_is_used_and_logged() -> None:
     assert pipeline.config()["plan_system_prompt"] == "CUSTOM"
     assert vlm.calls[0][0] == "CUSTOM"
     assert output.intermediate["segmentation_prompt"] == "bottle"
+
+
+def test_sequential_logs_vlm_token_usage() -> None:
+    vlm = FakeVLM(
+        [
+            '{"intent":"count","segmentation_prompt":"bottle"}',
+            '{"count":1,"answer":"one bottle"}',
+        ],
+        usages=[
+            {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            {"prompt_tokens": 20, "completion_tokens": 7, "total_tokens": 27},
+        ],
+    )
+
+    output = SequentialPipeline(vlm=vlm, segmenter=FakeSegmenter(_instances(1))).run(_image(), "count bottles")
+
+    assert output.intermediate["vlm_usage"] == [
+        {"stage": "plan", "prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        {"stage": "reason", "prompt_tokens": 20, "completion_tokens": 7, "total_tokens": 27},
+    ]
+    assert output.intermediate["vlm_usage_total"] == {
+        "prompt_tokens": 30,
+        "completion_tokens": 12,
+        "total_tokens": 42,
+    }
 
 
 def test_sequential_prompt_style_selects_detailed_plan_prompt() -> None:
