@@ -17,12 +17,18 @@ DEFAULT_DEVICE = "cuda:0"
 class FalconSegmenter:
     """Load Falcon once and return harness Instances for a prompt."""
 
-    def __init__(self, model_id: str = DEFAULT_MODEL_ID, device: str = DEFAULT_DEVICE) -> None:
+    def __init__(
+        self,
+        model_id: str = DEFAULT_MODEL_ID,
+        device: str = DEFAULT_DEVICE,
+        clear_cuda_cache_after_segment: bool = True,
+    ) -> None:
         import torch
         from transformers import AutoModelForCausalLM
 
         self.model_id = model_id
         self.device = device
+        self.clear_cuda_cache_after_segment = clear_cuda_cache_after_segment
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id,
             trust_remote_code=True,
@@ -35,8 +41,12 @@ class FalconSegmenter:
         """Run Falcon on prompt; return Instances with label=prompt."""
 
         rgb_image = image.convert("RGB") if image.mode != "RGB" else image
-        predictions = self.model.generate(rgb_image, prompt)[0]
-        return [_prediction_to_instance(prediction, prompt, rgb_image.size) for prediction in predictions]
+        try:
+            predictions = self.model.generate(rgb_image, prompt)[0]
+            return [_prediction_to_instance(prediction, prompt, rgb_image.size) for prediction in predictions]
+        finally:
+            if self.clear_cuda_cache_after_segment:
+                _clear_cuda_cache(self.device)
 
     def to_cpu(self) -> None:
         """Move Falcon weights to CPU and clear CUDA cache when available."""
@@ -108,3 +118,18 @@ def _bbox_from_mask(mask: np.ndarray) -> tuple[float, float, float, float] | Non
     x1 = float(xs.max() + 1)
     y1 = float(ys.max() + 1)
     return (x0, y0, x1 - x0, y1 - y0)
+
+
+def _clear_cuda_cache(device: str) -> None:
+    if not device.startswith("cuda"):
+        return
+    try:
+        import torch
+    except ImportError:
+        return
+    if not torch.cuda.is_available():
+        return
+    torch.cuda.empty_cache()
+    ipc_collect = getattr(torch.cuda, "ipc_collect", None)
+    if callable(ipc_collect):
+        ipc_collect()

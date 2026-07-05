@@ -27,6 +27,32 @@ def test_prediction_bbox_falls_back_to_mask_for_malformed_xy() -> None:
     assert instance.bbox == (2.0, 1.0, 3.0, 2.0)
 
 
+def test_falcon_segmenter_clears_cuda_cache_after_segment(monkeypatch: pytest.MonkeyPatch) -> None:
+    from visualcue.harness.systems import _falcon
+
+    mask = np.zeros((5, 6), dtype=bool)
+    mask[1:3, 2:5] = True
+    rle = mask_utils.encode(np.asfortranarray(mask.astype(np.uint8)))
+
+    class FakeModel:
+        def generate(self, image: Image.Image, prompt: str):
+            del image, prompt
+            return [[{"mask_rle": {"size": rle["size"], "counts": rle["counts"].decode("ascii")}}]]
+
+    cleanup_calls: list[str] = []
+    monkeypatch.setattr(_falcon, "_clear_cuda_cache", cleanup_calls.append)
+
+    segmenter = object.__new__(_falcon.FalconSegmenter)
+    segmenter.model = FakeModel()
+    segmenter.device = "cuda:0"
+    segmenter.clear_cuda_cache_after_segment = True
+
+    instances = segmenter.segment(Image.new("RGB", (6, 5), "white"), "object")
+
+    assert len(instances) == 1
+    assert cleanup_calls == ["cuda:0"]
+
+
 def test_falcon_only_runs_with_local_weights(monkeypatch: pytest.MonkeyPatch) -> None:
     torch = pytest.importorskip("torch")
     pytest.importorskip("transformers")

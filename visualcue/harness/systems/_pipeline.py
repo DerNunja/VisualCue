@@ -67,6 +67,7 @@ class VlmSegPipeline:
         vlm_api_key: str = "lm-studio",
         falcon_model_id: str = DEFAULT_MODEL_ID,
         falcon_device: str = DEFAULT_DEVICE,
+        clear_cuda_cache_after_segment: bool = True,
         enable_reasoning: bool = True,
         free_falcon_between_calls: bool = False,
         plan_system_prompt: str | None = None,
@@ -82,13 +83,18 @@ class VlmSegPipeline:
         self.vlm_max_tokens = int(vlm_max_tokens)
         self.falcon_model_id = falcon_model_id
         self.falcon_device = falcon_device
+        self.clear_cuda_cache_after_segment = clear_cuda_cache_after_segment
         self.vlm = vlm or VLMClient(
             base_url=vlm_base_url,
             model=vlm_model,
             api_key=vlm_api_key,
             max_tokens=self.vlm_max_tokens,
         )
-        self.segmenter = segmenter or FalconSegmenter(model_id=falcon_model_id, device=falcon_device)
+        self.segmenter = segmenter or FalconSegmenter(
+            model_id=falcon_model_id,
+            device=falcon_device,
+            clear_cuda_cache_after_segment=clear_cuda_cache_after_segment,
+        )
         self.enable_reasoning = enable_reasoning
         self.free_falcon_between_calls = free_falcon_between_calls
         self.segmentation_prompt_style = _normalize_segmentation_prompt_style(segmentation_prompt_style)
@@ -111,6 +117,7 @@ class VlmSegPipeline:
             "locate_reason_system_prompt": self.locate_reason_system_prompt,
             "falcon_model_id": self.falcon_model_id,
             "falcon_device": self.falcon_device,
+            "clear_cuda_cache_after_segment": self.clear_cuda_cache_after_segment,
         }
 
     def _segment(self, image: Image.Image, segmentation_prompt: str) -> list[Instance]:

@@ -17,16 +17,25 @@ class FalconOnly:
         self,
         model_id: str = DEFAULT_MODEL_ID,
         device: str = DEFAULT_DEVICE,
+        clear_cuda_cache_after_segment: bool = True,
         segmenter: FalconSegmenter | None = None,
     ) -> None:
         """Load the Falcon Perception model once for repeated harness calls."""
 
         self.model_id = model_id
         self.device = device
-        self.segmenter = segmenter or FalconSegmenter(model_id=model_id, device=device)
+        self.clear_cuda_cache_after_segment = clear_cuda_cache_after_segment
+        self.segmenter = segmenter or FalconSegmenter(
+            model_id=model_id,
+            device=device,
+            clear_cuda_cache_after_segment=clear_cuda_cache_after_segment,
+        )
 
-    def config(self) -> dict[str, str]:
-        return {"model_id": self.model_id}
+    def config(self) -> dict[str, str | bool]:
+        return {
+            "model_id": self.model_id,
+            "clear_cuda_cache_after_segment": self.clear_cuda_cache_after_segment,
+        }
 
     def run(
         self,
