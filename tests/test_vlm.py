@@ -48,7 +48,7 @@ class _FakeClient:
 
 
 def test_vlm_client_sets_max_tokens_and_records_usage() -> None:
-    assert DEFAULT_MAX_TOKENS == 1024
+    assert DEFAULT_MAX_TOKENS == 4096
 
     client = object.__new__(VLMClient)
     client.client = _FakeClient("stop")
