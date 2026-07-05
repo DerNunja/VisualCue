@@ -8,7 +8,7 @@ from typing import Any
 
 from PIL import Image
 
-DEFAULT_MAX_TOKENS = 16_000
+DEFAULT_MAX_TOKENS = 1_024
 
 
 class VLMTokenLimitExceeded(RuntimeError):

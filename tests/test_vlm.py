@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from visualcue.harness.systems._vlm import VLMClient, VLMTokenLimitExceeded
+from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient, VLMTokenLimitExceeded
 
 
 class _FakeUsage:
@@ -48,6 +48,8 @@ class _FakeClient:
 
 
 def test_vlm_client_sets_max_tokens_and_records_usage() -> None:
+    assert DEFAULT_MAX_TOKENS == 1024
+
     client = object.__new__(VLMClient)
     client.client = _FakeClient("stop")
     client.model = "fake"
