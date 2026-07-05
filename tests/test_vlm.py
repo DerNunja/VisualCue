@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient, VLMTokenLimitExceeded
+from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient, VLMRequestError, VLMTokenLimitExceeded
 
 
 class _FakeUsage:
@@ -28,23 +28,26 @@ class _FakeResponse:
 
 
 class _FakeCompletions:
-    def __init__(self, finish_reason: str) -> None:
+    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
         self.finish_reason = finish_reason
+        self.error = error
         self.kwargs = None
 
     def create(self, **kwargs):
         self.kwargs = kwargs
+        if self.error is not None:
+            raise self.error
         return _FakeResponse(self.finish_reason)
 
 
 class _FakeChat:
-    def __init__(self, finish_reason: str) -> None:
-        self.completions = _FakeCompletions(finish_reason)
+    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
+        self.completions = _FakeCompletions(finish_reason, error=error)
 
 
 class _FakeClient:
-    def __init__(self, finish_reason: str) -> None:
-        self.chat = _FakeChat(finish_reason)
+    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
+        self.chat = _FakeChat(finish_reason, error=error)
 
 
 def test_vlm_client_sets_max_tokens_and_records_usage() -> None:
@@ -72,3 +75,14 @@ def test_vlm_client_raises_when_response_hits_token_limit() -> None:
         client.complete("system", "user")
 
     assert exc_info.value.usage == {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+
+
+def test_vlm_client_wraps_backend_request_errors() -> None:
+    client = object.__new__(VLMClient)
+    client.client = _FakeClient("stop", error=RuntimeError("backend rejected generated output"))
+    client.model = "fake"
+    client.max_tokens = 4096
+    client.last_usage = None
+
+    with pytest.raises(VLMRequestError, match="backend rejected"):
+        client.complete("system", "user")

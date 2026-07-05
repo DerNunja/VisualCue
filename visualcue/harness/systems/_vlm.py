@@ -19,6 +19,14 @@ class VLMTokenLimitExceeded(RuntimeError):
         self.usage = usage
 
 
+class VLMRequestError(RuntimeError):
+    """Raised when the OpenAI-compatible VLM backend rejects or fails a request."""
+
+    def __init__(self, message: str, usage: dict[str, int] | None = None) -> None:
+        super().__init__(message)
+        self.usage = usage
+
+
 class VLMClient:
     """Small deterministic chat-completion wrapper."""
 
@@ -46,12 +54,15 @@ class VLMClient:
                     ],
                 }
             )
-        response = self.client.chat.completions.create(
-            model=self.model,
-            temperature=0,
-            max_tokens=self.max_tokens,
-            messages=messages,
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                temperature=0,
+                max_tokens=self.max_tokens,
+                messages=messages,
+            )
+        except Exception as exc:
+            raise VLMRequestError(_short_error_message(exc), usage=self.last_usage) from exc
         self.last_usage = _usage_to_dict(getattr(response, "usage", None))
         choice = response.choices[0]
         finish_reason = getattr(choice, "finish_reason", None)
@@ -82,3 +93,10 @@ def _usage_to_dict(usage: Any) -> dict[str, int] | None:
         if value is not None:
             result[key] = int(value)
     return result or None
+
+
+def _short_error_message(exc: Exception) -> str:
+    text = str(exc).replace("\n", " ")
+    if len(text) > 500:
+        return text[:497] + "..."
+    return text

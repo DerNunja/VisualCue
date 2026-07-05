@@ -7,7 +7,7 @@ from PIL import Image
 
 from visualcue.harness.datasets.custom import CustomAdapter
 from visualcue.harness.runner import evaluate
-from visualcue.harness.systems._vlm import VLMTokenLimitExceeded
+from visualcue.harness.systems._vlm import VLMRequestError, VLMTokenLimitExceeded
 from visualcue.harness.systems.mock import MockSystem
 
 
@@ -64,6 +64,20 @@ def test_runner_skips_vlm_token_limit_samples(tmp_path) -> None:
     assert skipped[0]["vlm_usage"] == {"prompt_tokens": 1, "completion_tokens": 16000, "total_tokens": 16001}
 
 
+def test_runner_skips_vlm_request_errors(tmp_path) -> None:
+    dataset_root = _write_custom_dataset(tmp_path)
+
+    record = evaluate(_RequestErrorOnceSystem(), CustomAdapter(dataset_root), tmp_path / "results", config_bytes=b"test", seed=7)
+
+    assert record.n_samples == 2
+    samples_path = tmp_path / "results" / "request_error_once__custom__samples.jsonl"
+    rows = [json.loads(line) for line in samples_path.read_text(encoding="utf-8").splitlines()]
+    skipped = [row for row in rows if row.get("skipped")]
+    assert len(skipped) == 1
+    assert skipped[0]["sample_id"] == "count"
+    assert skipped[0]["skip_reason"] == "vlm_request_error"
+
+
 def test_runner_runs_maintenance_command_between_samples(tmp_path, monkeypatch) -> None:
     dataset_root = _write_custom_dataset(tmp_path)
     calls: list[list[str]] = []
@@ -107,6 +121,18 @@ class _TokenLimitOnceSystem:
                 "VLM response exceeded max_tokens=16000",
                 usage={"prompt_tokens": 1, "completion_tokens": 16000, "total_tokens": 16001},
             )
+        return self.mock.run(image, query, gold_targets=gold_targets)
+
+
+class _RequestErrorOnceSystem:
+    name = "request_error_once"
+
+    def __init__(self) -> None:
+        self.mock = MockSystem()
+
+    def run(self, image: Image.Image, query: str, gold_targets: list[str] | None = None):
+        if getattr(image, "sample_id", None) == "count":
+            raise VLMRequestError("backend rejected generated output")
         return self.mock.run(image, query, gold_targets=gold_targets)
 
 

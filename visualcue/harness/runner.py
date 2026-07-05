@@ -30,7 +30,7 @@ from visualcue.harness.metrics import (
     precision_recall_f1,
 )
 from visualcue.harness.systems.base import VisionSystem
-from visualcue.harness.systems._vlm import VLMTokenLimitExceeded
+from visualcue.harness.systems._vlm import VLMRequestError, VLMTokenLimitExceeded
 from visualcue.harness.types import GTSample, Instance, ResultRecord, SystemOutput
 DEFAULT_IOU_THRESHOLD = 0.5
 QUALITATIVE_LIMIT = 8
@@ -73,7 +73,7 @@ def evaluate(
             start = time.perf_counter()
             try:
                 out = system.run(sample.image, sample.query)
-            except VLMTokenLimitExceeded as exc:
+            except (VLMRequestError, VLMTokenLimitExceeded) as exc:
                 skipped_samples += 1
                 raw_rows.append(_skip_row(sample, exc, (time.perf_counter() - start) * 1000.0))
                 progress.write(f"skipped {sample.sample_id}: {exc}")
@@ -92,7 +92,7 @@ def evaluate(
                 gold_start = time.perf_counter()
                 try:
                     gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
-                except VLMTokenLimitExceeded as exc:
+                except (VLMRequestError, VLMTokenLimitExceeded) as exc:
                     progress.write(f"skipped gold-target attribution for {sample.sample_id}: {exc}")
                     gold_out = None
                 if gold_out is not None:
@@ -263,12 +263,13 @@ def _raw_row(sample: GTSample, out: SystemOutput) -> dict[str, Any]:
     }
 
 
-def _skip_row(sample: GTSample, exc: VLMTokenLimitExceeded, latency_ms: float) -> dict[str, Any]:
+def _skip_row(sample: GTSample, exc: VLMRequestError | VLMTokenLimitExceeded, latency_ms: float) -> dict[str, Any]:
+    skip_reason = _skip_reason(exc)
     return {
         "sample_id": sample.sample_id,
         "query_type": sample.query_type,
         "skipped": True,
-        "skip_reason": "vlm_token_limit_exceeded",
+        "skip_reason": skip_reason,
         "error": str(exc),
         "latency_ms": latency_ms,
         "vlm_usage": exc.usage,
@@ -276,10 +277,16 @@ def _skip_row(sample: GTSample, exc: VLMTokenLimitExceeded, latency_ms: float) -
         "count": None,
         "answer": None,
         "intermediate": {
-            "skip_reason": "vlm_token_limit_exceeded",
+            "skip_reason": skip_reason,
             "vlm_usage": [{"stage": "unknown", **exc.usage}] if exc.usage else [],
         },
     }
+
+
+def _skip_reason(exc: VLMRequestError | VLMTokenLimitExceeded) -> str:
+    if isinstance(exc, VLMTokenLimitExceeded):
+        return "vlm_token_limit_exceeded"
+    return "vlm_request_error"
 
 
 def _instance_to_json(instance: Instance) -> dict[str, Any]:
