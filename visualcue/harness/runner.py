@@ -6,6 +6,7 @@ import dataclasses
 import hashlib
 import json
 import random
+import subprocess
 import time
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -45,6 +46,8 @@ def evaluate(
     attribution: bool = False,
     config_bytes: bytes | None = None,
     seed: int | None = None,
+    maintenance_interval: int | None = None,
+    maintenance_command: str | list[str] | None = None,
 ) -> ResultRecord:
     """Evaluate one system/dataset pair; writes unique JSON, JSONL, and overlays."""
 
@@ -62,7 +65,9 @@ def evaluate(
     skipped_samples = 0
 
     progress_desc = f"{system.name} / {dataset.name}"
-    with tqdm(dataset, total=_safe_len(dataset), desc=progress_desc, unit="sample") as progress:
+    total_samples = _safe_len(dataset)
+    processed_samples = 0
+    with tqdm(dataset, total=total_samples, desc=progress_desc, unit="sample") as progress:
         for index, sample in enumerate(progress):
             setattr(sample.image, "sample_id", sample.sample_id)
             start = time.perf_counter()
@@ -72,15 +77,16 @@ def evaluate(
                 skipped_samples += 1
                 raw_rows.append(_skip_row(sample, exc, (time.perf_counter() - start) * 1000.0))
                 progress.write(f"skipped {sample.sample_id}: {exc}")
-                continue
-            out.latency_ms = (time.perf_counter() - start) * 1000.0
-            latencies.append(out.latency_ms)
-            per_type[sample.query_type].append((out, sample))
-            raw_rows.append(_raw_row(sample, out))
-            if index < QUALITATIVE_LIMIT:
-                _write_overlay(sample, out, qualitative_dir / f"{stem}__{sample.sample_id}.png")
+                out = None
+            if out is not None:
+                out.latency_ms = (time.perf_counter() - start) * 1000.0
+                latencies.append(out.latency_ms)
+                per_type[sample.query_type].append((out, sample))
+                raw_rows.append(_raw_row(sample, out))
+                if index < QUALITATIVE_LIMIT:
+                    _write_overlay(sample, out, qualitative_dir / f"{stem}__{sample.sample_id}.png")
 
-            if attribution:
+            if attribution and out is not None:
                 gold_targets = [instance.label for instance in sample.gt_instances if instance.label]
                 setattr(sample.image, "sample_id", sample.sample_id)
                 gold_start = time.perf_counter()
@@ -88,9 +94,19 @@ def evaluate(
                     gold_out = system.run(sample.image, sample.query, gold_targets=gold_targets)
                 except VLMTokenLimitExceeded as exc:
                     progress.write(f"skipped gold-target attribution for {sample.sample_id}: {exc}")
-                    continue
-                gold_out.latency_ms = (time.perf_counter() - gold_start) * 1000.0
-                gold_per_type[sample.query_type].append((gold_out, sample))
+                    gold_out = None
+                if gold_out is not None:
+                    gold_out.latency_ms = (time.perf_counter() - gold_start) * 1000.0
+                    gold_per_type[sample.query_type].append((gold_out, sample))
+
+            processed_samples += 1
+            _maybe_run_maintenance(
+                processed_samples,
+                total_samples,
+                maintenance_interval,
+                maintenance_command,
+                progress.write,
+            )
 
     with samples_path.open("w", encoding="utf-8") as handle:
         for row in raw_rows:
@@ -104,6 +120,11 @@ def evaluate(
     if callable(config_fn):
         metrics["metadata"]["system_config"] = config_fn()
     metrics["metadata"]["skipped_samples"] = skipped_samples
+    if maintenance_interval and maintenance_command:
+        metrics["metadata"]["maintenance"] = {
+            "interval": maintenance_interval,
+            "command": maintenance_command,
+        }
     if attribution:
         metrics["gold_targets"] = _segmentation_metrics_by_type(gold_per_type, iou_threshold)
 
@@ -138,6 +159,31 @@ def _safe_len(dataset: DatasetAdapter) -> int | None:
         return len(dataset)
     except TypeError:
         return None
+
+
+def _maybe_run_maintenance(
+    processed_samples: int,
+    total_samples: int | None,
+    maintenance_interval: int | None,
+    maintenance_command: str | list[str] | None,
+    write: Any,
+) -> None:
+    if not maintenance_interval or not maintenance_command:
+        return
+    if maintenance_interval < 1:
+        raise ValueError("maintenance_interval must be >= 1")
+    if processed_samples % maintenance_interval != 0:
+        return
+    if total_samples is not None and processed_samples >= total_samples:
+        return
+
+    write(f"running maintenance command after {processed_samples} samples")
+    subprocess.run(
+        maintenance_command,
+        check=True,
+        shell=isinstance(maintenance_command, str),
+    )
+    write("maintenance command finished")
 
 
 def _unique_stem(out_dir: Path, system_name: str, dataset_name: str) -> str:

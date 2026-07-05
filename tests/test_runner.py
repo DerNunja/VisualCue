@@ -64,6 +64,37 @@ def test_runner_skips_vlm_token_limit_samples(tmp_path) -> None:
     assert skipped[0]["vlm_usage"] == {"prompt_tokens": 1, "completion_tokens": 16000, "total_tokens": 16001}
 
 
+def test_runner_runs_maintenance_command_between_samples(tmp_path, monkeypatch) -> None:
+    dataset_root = _write_custom_dataset(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_run(command, check: bool, shell: bool) -> None:
+        assert check is True
+        assert shell is False
+        calls.append(command)
+
+    monkeypatch.setattr("visualcue.harness.runner.subprocess.run", fake_run)
+
+    record = evaluate(
+        MockSystem(),
+        CustomAdapter(dataset_root),
+        tmp_path / "results",
+        config_bytes=b"test",
+        seed=7,
+        maintenance_interval=2,
+        maintenance_command=["lms", "server", "restart"],
+    )
+
+    assert record.n_samples == 3
+    assert calls == [["lms", "server", "restart"]]
+    result_path = tmp_path / "results" / "mock__custom.json"
+    data = json.loads(result_path.read_text(encoding="utf-8"))
+    assert data["metrics"]["metadata"]["maintenance"] == {
+        "interval": 2,
+        "command": ["lms", "server", "restart"],
+    }
+
+
 class _TokenLimitOnceSystem:
     name = "token_limit_once"
 

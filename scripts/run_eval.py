@@ -112,6 +112,9 @@ def main() -> None:
     attribution = bool(config.get("attribution", False))
     seed = config.get("seed")
     seed = int(seed) if seed is not None else None
+    maintenance_interval = config.get("maintenance_interval")
+    maintenance_interval = int(maintenance_interval) if maintenance_interval is not None else None
+    maintenance_command = config.get("maintenance_command")
 
     for system in systems:
         for dataset in datasets:
@@ -123,6 +126,8 @@ def main() -> None:
                 attribution=attribution,
                 config_bytes=config_bytes,
                 seed=seed,
+                maintenance_interval=maintenance_interval,
+                maintenance_command=maintenance_command,
             )
 
 
