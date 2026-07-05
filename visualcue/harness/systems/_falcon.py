@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 from typing import Any
 
 import numpy as np
@@ -41,10 +42,13 @@ class FalconSegmenter:
         """Run Falcon on prompt; return Instances with label=prompt."""
 
         rgb_image = image.convert("RGB") if image.mode != "RGB" else image
+        predictions = None
         try:
             predictions = self.model.generate(rgb_image, prompt)[0]
-            return [_prediction_to_instance(prediction, prompt, rgb_image.size) for prediction in predictions]
+            instances = [_prediction_to_instance(prediction, prompt, rgb_image.size) for prediction in predictions]
+            return instances
         finally:
+            predictions = None
             if self.clear_cuda_cache_after_segment:
                 _clear_cuda_cache(self.device)
 
@@ -129,6 +133,10 @@ def _clear_cuda_cache(device: str) -> None:
         return
     if not torch.cuda.is_available():
         return
+    synchronize = getattr(torch.cuda, "synchronize", None)
+    if callable(synchronize):
+        synchronize()
+    gc.collect()
     torch.cuda.empty_cache()
     ipc_collect = getattr(torch.cuda, "ipc_collect", None)
     if callable(ipc_collect):
