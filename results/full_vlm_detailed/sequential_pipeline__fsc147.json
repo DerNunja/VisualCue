@@ -1,0 +1,51 @@
+{
+  "config_hash": "b213375401d6d23abd60310f0498dd88d59694c57376acabfc88dfca6f773457",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 14563.685958466978,
+    "p50": 11981.663264450617,
+    "p95": 33490.29702360854
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 0.9664502164502164,
+        "mae": 15.331168831168831,
+        "n_samples": 924,
+        "rmse": 132.95439930431897
+      }
+    },
+    "metadata": {
+      "maintenance": {
+        "command": "lms unload --all && lms load google/gemma-4-26b-a4b",
+        "interval": 100
+      },
+      "seed": 123,
+      "skipped_samples": 76,
+      "system_config": {
+        "clear_cuda_cache_after_segment": true,
+        "count_reason_system_prompt": "You receive an image with marked segmentation candidates. Answer the user's counting request. Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}.",
+        "enable_reasoning": true,
+        "falcon_device": "cuda:0",
+        "falcon_model_id": "tiiuae/falcon-perception",
+        "free_falcon_between_calls": false,
+        "locate_reason_system_prompt": "You receive an image with numbered candidate masks and bounding boxes. Select the candidate indices that satisfy the user's request. Respond ONLY as JSON: {\"selected\": [<indices>], \"answer\": \"<text>\"}.",
+        "plan_system_prompt": "You receive an image and a user request. Decide whether the user wants to COUNT objects or to LOCATE a specific object. Produce a segmentation prompt for a promptable open-vocabulary segmentation model. The segmentation model understands rich, compositional language, so PRESERVE every distinguishing detail from the user's request that helps identify the correct instance(s): attributes (color, size, shape, material, text/labels), ordinal position (e.g. 'third from the left', 'the one closest to the camera'), spatial relations to other objects, and grouping. Do NOT simplify to a bare object category if detail was given - only drop wording that is not about identifying the object (e.g. politeness, the word 'please'). Respond ONLY as JSON: {\"intent\": \"count\"|\"locate\", \"segmentation_prompt\": \"<full descriptive phrase>\"}.",
+        "segmentation_prompt_style": "detailed",
+        "vlm_base_url": "http://127.0.0.1:1234/v1",
+        "vlm_max_tokens": 16000,
+        "vlm_model": "google/gemma-4-26b-a4b"
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 924,
+  "system_name": "sequential_pipeline",
+  "timestamp": "2026-07-06T03:44:59.119953+00:00"
+}

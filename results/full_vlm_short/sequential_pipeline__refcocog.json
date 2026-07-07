@@ -1,0 +1,56 @@
+{
+  "config_hash": "640d73a076d47b65d3c6fb44d2dc056c8ccaaa9e9b6be60721e45f128fcd235b",
+  "dataset_name": "refcocog",
+  "latency": {
+    "mean": 6008.22139064594,
+    "p50": 4816.938434960321,
+    "p95": 13272.307466366328
+  },
+  "metrics": {
+    "end_to_end": {
+      "referring": {
+        "cumulative_iou": 0.5960217538245325,
+        "f1": 0.7009646302250804,
+        "fn": 236,
+        "fp": 415,
+        "mean_iou": 0.6578450435260367,
+        "n_samples": 999,
+        "precision": 0.6477079796264855,
+        "recall": 0.7637637637637638,
+        "tp": 763
+      }
+    },
+    "metadata": {
+      "maintenance": {
+        "command": "lms unload --all && lms load google/gemma-4-26b-a4b",
+        "interval": 100
+      },
+      "seed": 123,
+      "skipped_samples": 1,
+      "system_config": {
+        "clear_cuda_cache_after_segment": true,
+        "count_reason_system_prompt": "You receive an image with marked segmentation candidates. Answer the user's counting request. Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}.",
+        "enable_reasoning": true,
+        "falcon_device": "cuda:0",
+        "falcon_model_id": "tiiuae/falcon-perception",
+        "free_falcon_between_calls": false,
+        "locate_reason_system_prompt": "You receive an image with numbered candidate masks and bounding boxes. Select the candidate indices that satisfy the user's request. Respond ONLY as JSON: {\"selected\": [<indices>], \"answer\": \"<text>\"}.",
+        "plan_system_prompt": "You receive an image and a user request. Decide whether the user wants to COUNT objects or to LOCATE a specific object. Produce a concise segmentation prompt naming the object class to segment. Respond ONLY as JSON: {\"intent\": \"count\"|\"locate\", \"segmentation_prompt\": \"<noun phrase>\"}.",
+        "segmentation_prompt_style": "short",
+        "vlm_base_url": "http://127.0.0.1:1234/v1",
+        "vlm_max_tokens": 16000,
+        "vlm_model": "google/gemma-4-26b-a4b"
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 999,
+  "system_name": "sequential_pipeline",
+  "timestamp": "2026-07-06T19:56:43.880687+00:00"
+}

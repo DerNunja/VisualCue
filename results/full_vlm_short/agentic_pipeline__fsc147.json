@@ -1,0 +1,54 @@
+{
+  "config_hash": "640d73a076d47b65d3c6fb44d2dc056c8ccaaa9e9b6be60721e45f128fcd235b",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 19730.667291203925,
+    "p50": 15602.202917914838,
+    "p95": 46840.87530655088
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 0.9898348157560356,
+        "mae": 8.321473951715374,
+        "n_samples": 787,
+        "rmse": 130.95714014135518
+      }
+    },
+    "metadata": {
+      "maintenance": {
+        "command": "lms unload --all && lms load google/gemma-4-26b-a4b",
+        "interval": 100
+      },
+      "seed": 123,
+      "skipped_samples": 213,
+      "system_config": {
+        "clear_cuda_cache_after_segment": true,
+        "count_reason_system_prompt": "You receive an image with marked segmentation candidates. Answer the user's counting request. Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}.",
+        "enable_reasoning": true,
+        "evaluate_system_prompt": "You are refining an open-vocabulary segmentation. You see the original request, the current segmentation prompt, and an image with the current candidate masks drawn and numbered. If the current segmentation already lets you answer the request, choose finalize. Otherwise choose refine and give an improved segmentation_prompt that preserves or adjusts distinguishing detail (attributes, ordinal position, spatial relations). Respond ONLY as JSON: {\"action\": \"finalize\"|\"refine\", \"segmentation_prompt\": \"<required if refine>\", \"reason\": \"<short>\"}.",
+        "falcon_device": "cuda:0",
+        "falcon_model_id": "tiiuae/falcon-perception",
+        "free_falcon_between_calls": false,
+        "include_prompt_history": true,
+        "locate_reason_system_prompt": "You receive an image with numbered candidate masks and bounding boxes. Select the candidate indices that satisfy the user's request. Respond ONLY as JSON: {\"selected\": [<indices>], \"answer\": \"<text>\"}.",
+        "max_steps": 3,
+        "plan_system_prompt": "You receive an image and a user request. Decide whether the user wants to COUNT objects or to LOCATE a specific object. Produce a concise segmentation prompt naming the object class to segment. Respond ONLY as JSON: {\"intent\": \"count\"|\"locate\", \"segmentation_prompt\": \"<noun phrase>\"}.",
+        "segmentation_prompt_style": "short",
+        "vlm_base_url": "http://127.0.0.1:1234/v1",
+        "vlm_max_tokens": 16000,
+        "vlm_model": "google/gemma-4-26b-a4b"
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 787,
+  "system_name": "agentic_pipeline",
+  "timestamp": "2026-07-07T07:54:18.036910+00:00"
+}

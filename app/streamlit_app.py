@@ -102,7 +102,7 @@ def _sidebar_settings() -> dict[str, Any]:
 
     with st.sidebar.expander("Connection settings"):
         vlm_base_url = st.text_input("VLM base URL", value="http://localhost:1234/v1")
-        vlm_model = st.text_input("VLM model", value="google/gemma-4-e4b")
+        vlm_model = st.text_input("VLM model", value="google/gemma-4-26b-a4b")
         vlm_api_key = st.text_input("VLM API key", value="lm-studio", type="password")
 
     return {
