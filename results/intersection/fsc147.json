@@ -1,0 +1,54 @@
+{
+  "dataset": "fsc147",
+  "intersection_size": 764,
+  "systems": {
+    "agentic": {
+      "coverage": {
+        "scored": 787,
+        "skip_rate": 0.21299999999999997,
+        "total": 1000
+      },
+      "intersection": {
+        "mae": 8.765706806282722,
+        "rmse": 134.00730131706527
+      },
+      "own_scored": {
+        "mae": 8.602287166454891,
+        "n": 787,
+        "rmse": 132.03788297793955
+      }
+    },
+    "falcon": {
+      "coverage": {
+        "scored": 1000,
+        "skip_rate": 0.0,
+        "total": 1000
+      },
+      "intersection": {
+        "mae": 22.968586387434556,
+        "rmse": 145.49622617944678
+      },
+      "own_scored": {
+        "mae": 40.192,
+        "n": 1000,
+        "rmse": 148.51876649097244
+      }
+    },
+    "sequential": {
+      "coverage": {
+        "scored": 924,
+        "skip_rate": 0.07599999999999996,
+        "total": 1000
+      },
+      "intersection": {
+        "mae": 8.403141361256544,
+        "rmse": 133.73206196685132
+      },
+      "own_scored": {
+        "mae": 15.331168831168831,
+        "n": 924,
+        "rmse": 132.95439930431897
+      }
+    }
+  }
+}
