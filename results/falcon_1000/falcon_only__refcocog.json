@@ -1,0 +1,42 @@
+{
+  "config_hash": "22f1e0cff95736a4f5506236c2039afbd35e61c0ec2e55e97414fd17d135e625",
+  "dataset_name": "refcocog",
+  "latency": {
+    "mean": 824.9145588699989,
+    "p50": 787.7628309997817,
+    "p95": 830.8777375999853
+  },
+  "metrics": {
+    "end_to_end": {
+      "referring": {
+        "cumulative_iou": 0.6330961603482299,
+        "f1": 0.7597340930674265,
+        "fn": 200,
+        "fp": 306,
+        "mean_iou": 0.6874223372134578,
+        "n_samples": 1000,
+        "precision": 0.7233273056057866,
+        "recall": 0.8,
+        "tp": 800
+      }
+    },
+    "metadata": {
+      "seed": 123,
+      "skipped_samples": 0,
+      "system_config": {
+        "clear_cuda_cache_after_segment": true,
+        "model_id": "tiiuae/falcon-perception"
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 1000,
+  "system_name": "falcon_only",
+  "timestamp": "2026-07-07T11:35:39.493778+00:00"
+}
