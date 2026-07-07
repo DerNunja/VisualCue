@@ -1,0 +1,19 @@
+systems:
+  - name: falcon_only
+
+datasets:
+  - name: refcocog
+    root: data/refcocog
+    split: val
+    split_by: umd
+
+  - name: fsc147
+    root: data/fsc147
+    split: test
+
+iou_threshold: 0.5
+seed: 123
+attribution: false
+out_dir: results/falcon_1000
+sample_limit: 1000
+sample_strategy: head
