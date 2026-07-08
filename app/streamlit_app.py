@@ -78,7 +78,14 @@ def main() -> None:
         st.info("Is LM Studio running and the selected model loaded?")
         return
 
-    overlay = render_overlay(image, output.instances, fill_masks=False, draw_mask_outlines=True)
+    overlay = render_overlay(
+        image,
+        output.instances,
+        fill_masks=bool(settings["overlay_fill_masks"]),
+        draw_mask_outlines=bool(settings["overlay_draw_mask_outlines"]),
+        draw_boxes=bool(settings["overlay_draw_boxes"]),
+        line_width=int(settings["overlay_line_width"]),
+    )
     _show_result(image, overlay, output.answer, output.count)
     _show_trace(settings["system"], output.intermediate)
 
@@ -105,6 +112,12 @@ def _sidebar_settings() -> dict[str, Any]:
         vlm_model = st.text_input("VLM model", value="google/gemma-4-26b-a4b")
         vlm_api_key = st.text_input("VLM API key", value="lm-studio", type="password")
 
+    with st.sidebar.expander("Overlay settings"):
+        overlay_fill_masks = st.toggle("Fill masks", value=False)
+        overlay_draw_mask_outlines = st.toggle("Draw mask outlines", value=True)
+        overlay_draw_boxes = st.toggle("Draw bounding boxes", value=True)
+        overlay_line_width = st.slider("Line width", min_value=1, max_value=8, value=2)
+
     return {
         "system": system,
         "plan_system_prompt": PROMPT_STYLES[prompt_style],
@@ -115,6 +128,10 @@ def _sidebar_settings() -> dict[str, Any]:
         "vlm_base_url": vlm_base_url,
         "vlm_model": vlm_model,
         "vlm_api_key": vlm_api_key,
+        "overlay_fill_masks": overlay_fill_masks,
+        "overlay_draw_mask_outlines": overlay_draw_mask_outlines,
+        "overlay_draw_boxes": overlay_draw_boxes,
+        "overlay_line_width": overlay_line_width,
     }
 
 
