@@ -7,7 +7,11 @@ from typing import Any
 
 from PIL import Image
 
-from visualcue.harness.systems._falcon import DEFAULT_DEVICE, DEFAULT_MODEL_ID, FalconSegmenter
+from visualcue.harness.systems._falcon import (
+    DEFAULT_DEVICE,
+    DEFAULT_MODEL_ID,
+    FalconSegmenter,
+)
 from visualcue.harness.systems._pipeline import (
     COUNT_REASON_SYSTEM_PROMPT,
     LOCATE_REASON_SYSTEM_PROMPT,
@@ -17,7 +21,11 @@ from visualcue.harness.systems._pipeline import (
     _record_vlm_usage,
     render_overlay,
 )
-from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient
+from visualcue.harness.systems._vlm import (
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_PARSE_ERROR_RETRIES,
+    VLMClient,
+)
 from visualcue.harness.types import Instance, SystemOutput
 
 EVALUATE_SYSTEM_PROMPT = (
@@ -51,6 +59,7 @@ class AgenticPipeline(VlmSegPipeline):
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         segmentation_prompt_style: str = "short",
         vlm_max_tokens: int = DEFAULT_MAX_TOKENS,
+        vlm_parse_error_retries: int = DEFAULT_PARSE_ERROR_RETRIES,
         max_steps: int = 8,
         include_prompt_history: bool = False,
         evaluate_system_prompt: str = EVALUATE_SYSTEM_PROMPT,
@@ -71,6 +80,7 @@ class AgenticPipeline(VlmSegPipeline):
             locate_reason_system_prompt=locate_reason_system_prompt,
             segmentation_prompt_style=segmentation_prompt_style,
             vlm_max_tokens=vlm_max_tokens,
+            vlm_parse_error_retries=vlm_parse_error_retries,
             vlm=vlm,
             segmenter=segmenter,
         )
@@ -190,9 +200,11 @@ class AgenticPipeline(VlmSegPipeline):
     ) -> tuple[str, str, str]:
         overlay = render_overlay(image, instances, fill_masks=False, draw_mask_outlines=True)
         parts = [
+            (
             f"Original request: {query}\n"
             f"Current segmentation prompt: {segmentation_prompt}\n"
             f"The segmenter returned {len(instances)} candidate(s)."
+            )
         ]
         if self.include_prompt_history:
             parts.append(_prompt_history_text(intermediate))

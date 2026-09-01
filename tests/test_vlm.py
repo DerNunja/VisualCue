@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient, VLMRequestError, VLMTokenLimitExceeded
+from visualcue.harness.systems._vlm import (
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_PARSE_ERROR_RETRIES,
+    VLMClient,
+    VLMRequestError,
+    VLMTokenLimitExceeded,
+)
 
 
 class _FakeUsage:
@@ -28,35 +34,39 @@ class _FakeResponse:
 
 
 class _FakeCompletions:
-    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
+    def __init__(self, finish_reason: str, errors: list[Exception] | None = None) -> None:
         self.finish_reason = finish_reason
-        self.error = error
+        self.errors = errors or []
         self.kwargs = None
+        self.calls: list[dict] = []
 
     def create(self, **kwargs):
         self.kwargs = kwargs
-        if self.error is not None:
-            raise self.error
+        self.calls.append(kwargs)
+        if self.errors:
+            raise self.errors.pop(0)
         return _FakeResponse(self.finish_reason)
 
 
 class _FakeChat:
-    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
-        self.completions = _FakeCompletions(finish_reason, error=error)
+    def __init__(self, finish_reason: str, errors: list[Exception] | None = None) -> None:
+        self.completions = _FakeCompletions(finish_reason, errors=errors)
 
 
 class _FakeClient:
-    def __init__(self, finish_reason: str, error: Exception | None = None) -> None:
-        self.chat = _FakeChat(finish_reason, error=error)
+    def __init__(self, finish_reason: str, errors: list[Exception] | None = None) -> None:
+        self.chat = _FakeChat(finish_reason, errors=errors)
 
 
 def test_vlm_client_sets_max_tokens_and_records_usage() -> None:
     assert DEFAULT_MAX_TOKENS == 4096
+    assert DEFAULT_PARSE_ERROR_RETRIES == 2
 
     client = object.__new__(VLMClient)
     client.client = _FakeClient("stop")
     client.model = "fake"
     client.max_tokens = 16000
+    client.parse_error_retries = 2
     client.last_usage = None
 
     assert client.complete("system", "user") == '{"ok": true}'
@@ -69,6 +79,7 @@ def test_vlm_client_raises_when_response_hits_token_limit() -> None:
     client.client = _FakeClient("length")
     client.model = "fake"
     client.max_tokens = 16000
+    client.parse_error_retries = 2
     client.last_usage = None
 
     with pytest.raises(VLMTokenLimitExceeded) as exc_info:
@@ -79,10 +90,29 @@ def test_vlm_client_raises_when_response_hits_token_limit() -> None:
 
 def test_vlm_client_wraps_backend_request_errors() -> None:
     client = object.__new__(VLMClient)
-    client.client = _FakeClient("stop", error=RuntimeError("backend rejected generated output"))
+    client.client = _FakeClient("stop", errors=[RuntimeError("backend rejected generated output")])
     client.model = "fake"
     client.max_tokens = 4096
+    client.parse_error_retries = 2
     client.last_usage = None
 
     with pytest.raises(VLMRequestError, match="backend rejected"):
         client.complete("system", "user")
+
+
+def test_vlm_client_retries_thought_channel_parse_errors() -> None:
+    client = object.__new__(VLMClient)
+    client.client = _FakeClient(
+        "stop",
+        errors=[RuntimeError("Error code: 400 - Failed to parse input at pos 0: <|channel>thought")],
+    )
+    client.model = "fake"
+    client.max_tokens = 4096
+    client.parse_error_retries = 2
+    client.last_usage = None
+
+    assert client.complete("system", "user") == '{"ok": true}'
+    calls = client.client.chat.completions.calls
+    assert len(calls) == 2
+    assert "<|channel>thought" not in calls[0]["messages"][0]["content"]
+    assert "<|channel>thought" in calls[1]["messages"][0]["content"]

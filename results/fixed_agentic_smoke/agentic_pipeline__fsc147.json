@@ -1,0 +1,55 @@
+{
+  "config_hash": "b4f5e87b7d000b12de82eece2e8b17402773d495acccd8cff676482607ffc50b",
+  "dataset_name": "fsc147",
+  "latency": {
+    "mean": 98949.742969,
+    "p50": 98949.742969,
+    "p95": 98949.742969
+  },
+  "metrics": {
+    "end_to_end": {
+      "counting": {
+        "answer_marking_consistency": 1.0,
+        "mae": 0.0,
+        "n_samples": 1,
+        "rmse": 0.0
+      }
+    },
+    "metadata": {
+      "maintenance": {
+        "command": "lms unload --all && lms load --context-length 32768 --identifier google/gemma-4-26b-a4b -y google/gemma-4-26b-a4b",
+        "interval": 100
+      },
+      "seed": 123,
+      "skipped_samples": 0,
+      "system_config": {
+        "clear_cuda_cache_after_segment": true,
+        "count_reason_system_prompt": "You receive an image with marked segmentation candidates. Answer the user's counting request. Respond ONLY as JSON: {\"count\": <int>, \"answer\": \"<text>\"}.",
+        "enable_reasoning": true,
+        "evaluate_system_prompt": "You are refining an open-vocabulary segmentation. You see the original request, the current segmentation prompt, and an image with the current candidate masks drawn and numbered. If the current segmentation already lets you answer the request, choose finalize. Otherwise choose refine and give an improved segmentation_prompt that preserves or adjusts distinguishing detail (attributes, ordinal position, spatial relations). Respond ONLY as JSON: {\"action\": \"finalize\"|\"refine\", \"segmentation_prompt\": \"<required if refine>\", \"reason\": \"<short>\"}.",
+        "falcon_device": "cuda:0",
+        "falcon_model_id": "tiiuae/falcon-perception",
+        "free_falcon_between_calls": false,
+        "include_prompt_history": true,
+        "locate_reason_system_prompt": "You receive an image with numbered candidate masks and bounding boxes. Select the candidate indices that satisfy the user's request. Respond ONLY as JSON: {\"selected\": [<indices>], \"answer\": \"<text>\"}.",
+        "max_steps": 3,
+        "plan_system_prompt": "You receive an image and a user request. Decide whether the user wants to COUNT objects or to LOCATE a specific object. Produce a segmentation prompt for a promptable open-vocabulary segmentation model. The segmentation model understands rich, compositional language, so PRESERVE every distinguishing detail from the user's request that helps identify the correct instance(s): attributes (color, size, shape, material, text/labels), ordinal position (e.g. 'third from the left', 'the one closest to the camera'), spatial relations to other objects, and grouping. Do NOT simplify to a bare object category if detail was given - only drop wording that is not about identifying the object (e.g. politeness, the word 'please'). Respond ONLY as JSON: {\"intent\": \"count\"|\"locate\", \"segmentation_prompt\": \"<full descriptive phrase>\"}.",
+        "segmentation_prompt_style": "detailed",
+        "vlm_base_url": "http://127.0.0.1:1234/v1",
+        "vlm_max_tokens": 16000,
+        "vlm_model": "google/gemma-4-26b-a4b",
+        "vlm_parse_error_retries": 2
+      },
+      "versions": {
+        "Pillow": "12.2.0",
+        "numpy": "2.4.6",
+        "pycocotools": "2.0.11",
+        "scipy": "1.17.1",
+        "torch": "2.12.1+cu130"
+      }
+    }
+  },
+  "n_samples": 1,
+  "system_name": "agentic_pipeline",
+  "timestamp": "2026-09-01T11:50:26.885410+00:00"
+}

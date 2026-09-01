@@ -9,8 +9,16 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw
 
-from visualcue.harness.systems._falcon import DEFAULT_DEVICE, DEFAULT_MODEL_ID, FalconSegmenter
-from visualcue.harness.systems._vlm import DEFAULT_MAX_TOKENS, VLMClient
+from visualcue.harness.systems._falcon import (
+    DEFAULT_DEVICE,
+    DEFAULT_MODEL_ID,
+    FalconSegmenter,
+)
+from visualcue.harness.systems._vlm import (
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_PARSE_ERROR_RETRIES,
+    VLMClient,
+)
 from visualcue.harness.types import Instance
 
 PLAN_SYSTEM_PROMPT_DETAILED = (
@@ -75,12 +83,14 @@ class VlmSegPipeline:
         locate_reason_system_prompt: str = LOCATE_REASON_SYSTEM_PROMPT,
         segmentation_prompt_style: str = "short",
         vlm_max_tokens: int = DEFAULT_MAX_TOKENS,
+        vlm_parse_error_retries: int = DEFAULT_PARSE_ERROR_RETRIES,
         vlm: VLMClient | None = None,
         segmenter: FalconSegmenter | None = None,
     ) -> None:
         self.vlm_base_url = vlm_base_url
         self.vlm_model = vlm_model
         self.vlm_max_tokens = int(vlm_max_tokens)
+        self.vlm_parse_error_retries = int(vlm_parse_error_retries)
         self.falcon_model_id = falcon_model_id
         self.falcon_device = falcon_device
         self.clear_cuda_cache_after_segment = clear_cuda_cache_after_segment
@@ -89,6 +99,7 @@ class VlmSegPipeline:
             model=vlm_model,
             api_key=vlm_api_key,
             max_tokens=self.vlm_max_tokens,
+            parse_error_retries=self.vlm_parse_error_retries,
         )
         self.segmenter = segmenter or FalconSegmenter(
             model_id=falcon_model_id,
@@ -109,6 +120,7 @@ class VlmSegPipeline:
             "vlm_base_url": self.vlm_base_url,
             "vlm_model": self.vlm_model,
             "vlm_max_tokens": self.vlm_max_tokens,
+            "vlm_parse_error_retries": self.vlm_parse_error_retries,
             "enable_reasoning": self.enable_reasoning,
             "free_falcon_between_calls": self.free_falcon_between_calls,
             "segmentation_prompt_style": self.segmentation_prompt_style,
